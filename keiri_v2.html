@@ -386,8 +386,13 @@ function loginErrMsg(msg){
 }
 function showLoginErr(msg){const el=Q('l-err');el.textContent=msg;el.style.display='block'}
 async function loadProfile(){
-  const {data}=await sb.from('profiles').select('*').eq('id',me.id).single();
-  myProfile=data;
+  const {data,error}=await sb.from('profiles').select('*').eq('id',me.id).single();
+  if(data){
+    myProfile=data;
+  }else{
+    const {data:inserted}=await sb.from('profiles').upsert({id:me.id,name:me.email,role:'staff'},{onConflict:'id'}).select().single();
+    myProfile=inserted;
+  }
 }
 async function doLogout(){
   loading(true,'ログアウト中...');
