@@ -223,11 +223,57 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div class="tabbar" id="s-tabs">
-    <button class="active" onclick="staffTab('input',0)"><span class="tab-icon">＋</span>入力</button>
+  <!-- 売上入力画面 -->
+  <div class="screen" id="s-sc-sales">
+    <div class="notice">💰 会社から通知された売上を入力してください。歩合率は管理者が設定した値が自動適用されます。</div>
+    <div class="card">
+      <div class="field"><label>対象月</label><input type="month" id="sv-month"></div>
+      <div class="field"><label>売上合計（円）</label><input type="number" id="sv-sales" placeholder="例：350000" inputmode="numeric"></div>
+      <div class="field"><label>メモ（任意）</label><input type="text" id="sv-memo" placeholder="例：5月分 技術売上"></div>
+      <div id="sv-rate-disp" style="background:#f0fdf4;border-radius:8px;padding:10px 14px;font-size:13px;color:#0F6E56;margin-bottom:14px;display:none">
+        歩合率：<span id="sv-rate-val"></span>% → 請求金額：<strong id="sv-claim-val"></strong>
+      </div>
+      <button class="btn-p" onclick="calcSales()">💴 請求金額を計算する</button>
+      <button class="btn-o" id="sv-save-btn" style="display:none;margin-top:8px" onclick="saveSales()">💾 保存する</button>
+    </div>
+    <div class="sec-lbl" style="margin-top:4px">保存済み売上一覧</div>
+    <div class="card" id="sv-list-c"><div class="empty">売上記録がありません</div></div>
+    <button class="btn-o" style="margin-top:8px" id="sv-pdf-btn" onclick="exportInvoicePDF()" style="display:none">🧾 請求書PDFを出力する</button>
+  </div>
+
+  <!-- 利益・税金画面 -->
+  <div class="screen" id="s-sc-profit">
+    <div class="msel"><label>対象年：</label><select id="pf-year" onchange="loadProfit()"></select></div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n green" id="pf-sales">¥0</div><div class="stat-l">年間売上</div></div>
+      <div class="stat"><div class="stat-n amber" id="pf-exp">¥0</div><div class="stat-l">年間経費</div></div>
+      <div class="stat"><div class="stat-n" id="pf-profit" style="color:#1a1a1a">¥0</div><div class="stat-l">利益</div></div>
+    </div>
+    <!-- 月別グラフ -->
+    <div class="card">
+      <div class="sec-lbl">月別 売上・経費・利益</div>
+      <div id="pf-chart" style="overflow-x:auto"></div>
+    </div>
+    <!-- 税金計算 -->
+    <div class="card">
+      <div class="sec-lbl">確定申告 税金シミュレーション（青色申告）</div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px">青色申告特別控除65万円適用後の概算です</div>
+      <div id="pf-tax-detail"></div>
+      <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#0F6E56;line-height:1.8" id="pf-tax-note"></div>
+    </div>
+    <!-- 月別テーブル -->
+    <div class="card">
+      <div class="sec-lbl">月別明細</div>
+      <div id="pf-monthly-table"></div>
+    </div>
+  </div>
+
+  <div class="tabbar" id="s-tabs" style="font-size:9px">
+    <button class="active" onclick="staffTab('input',0)"><span class="tab-icon">＋</span>経費入力</button>
     <button onclick="staffTab('list',1)"><span class="tab-icon">📋</span>一覧</button>
-    <button onclick="staffTab('sum',2)"><span class="tab-icon">📊</span>集計</button>
-    <button onclick="staffTab('msg',3)"><span class="tab-icon">💬</span>連絡<span id="msg-dot" style="display:none;color:#e53935;font-size:12px;margin-left:1px">●</span></button>
+    <button onclick="staffTab('sales',2)"><span class="tab-icon">💴</span>売上</button>
+    <button onclick="staffTab('profit',3)"><span class="tab-icon">📈</span>利益</button>
+    <button onclick="staffTab('msg',4)"><span class="tab-icon">💬</span>連絡<span id="msg-dot" style="display:none;color:#e53935;font-size:12px;margin-left:1px">●</span></button>
   </div>
 </div>
 
@@ -283,6 +329,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
 
   <div class="screen" id="a-sc-data">
+  <div class="card" style="margin-bottom:12px">
+    <div class="sec-lbl">歩合率設定（全スタッフ共通）</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <input type="number" id="a-rate-input" placeholder="50" style="width:80px;border:1px solid #e0e0e0;border-radius:8px;padding:8px 12px;font-size:16px;font-weight:600">
+      <span style="font-size:16px;font-weight:600">%</span>
+      <button class="btn-p" style="width:auto;padding:9px 16px" onclick="saveCommissionRate()">保存する</button>
+    </div>
+    <div id="a-rate-current" style="font-size:12px;color:#888"></div>
+  </div>
+
     <div class="notice-sec">🔐 このシステムはSupabase Auth + RLS（行レベルセキュリティ）で保護されています。</div>
     <div class="sec-lbl">セキュリティ状態</div>
     <div class="sec-row">Supabase Auth 正規認証<span class="tag tm">✅ 有効</span></div>
@@ -413,13 +469,16 @@ function showStaffApp(){
   staffTab('input',0);
   checkUnread();
   syncTimer=setInterval(()=>{loadStaffList();checkUnread()},30000);
+  showStaffAppExtra();
 }
 function staffTab(name,idx){
-  ['input','list','sum','msg'].forEach(n=>{const el=Q('s-sc-'+n);if(el)el.classList.remove('active')});
+  ['input','list','sum','sales','profit','msg'].forEach(n=>{const el=Q('s-sc-'+n);if(el)el.classList.remove('active')});
   Q('s-sc-'+name).classList.add('active');
   document.querySelectorAll('#s-tabs button').forEach((b,i)=>b.classList.toggle('active',i===idx));
   if(name==='list')loadStaffList();
   if(name==='sum')loadStaffSummary();
+  if(name==='sales')loadSalesList();
+  if(name==='profit')loadProfit();
   if(name==='msg')loadStaffMsgs();
 }
 function prevFile(input){
@@ -574,11 +633,29 @@ function adminTab(name,idx){
   if(name==='overview')loadAdminOverview();
   if(name==='members')loadAdminMembers();
   if(name==='review')loadAdminReview();
+  if(name==="data")loadAdminDataTab();
 }
 async function loadAdminStaffSel(){
+}
   const {data}=await sb.from('profiles').select('id,name').eq('role','staff').order('name');
   const sel=Q('a-rs');
   if(sel&&data)sel.innerHTML=data.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+async function saveCommissionRate(){
+  const rate = parseFloat(document.getElementById("a-rate-input").value);
+  if(!rate||rate<=0||rate>100){alert("1〜100の数値を入力してください");return;}
+  const {error} = await sb.from("settings").upsert({key:"commission_rate",value:String(rate),updated_at:new Date().toISOString()},{onConflict:"key"});
+  if(error){alert("保存エラー："+error.message);return;}
+  document.getElementById("a-rate-current").textContent = "現在の歩合率："+rate+"%（保存済み）";
+  alert("歩合率を"+rate+"%に設定しました");
+}
+async function loadAdminDataTab(){
+  const {data} = await sb.from("settings").select("value").eq("key","commission_rate").maybeSingle();
+  if(data){
+    document.getElementById("a-rate-input").value = data.value;
+    document.getElementById("a-rate-current").textContent = "現在の歩合率："+data.value+"%";
+  }
+}
+
 }
 async function loadAdminOverview(){
   setSync('a','ing');
@@ -698,6 +775,113 @@ async function backupJSON(){
 function dl(csv, filename){
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+}
+
+/* ─── 売上入力 ─── */
+let pendingSalesData = null;
+
+function showStaffAppExtra(){
+  const now = new Date();
+  const el = document.getElementById("sv-month");
+  if(el) el.value = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  const yr = document.getElementById("pf-year");
+  if(yr){
+    yr.innerHTML = "";
+    for(let y=now.getFullYear();y>=now.getFullYear()-3;y--){
+      yr.innerHTML += `<option value="${y}"${y===now.getFullYear()?" selected":""}>${y}年</option>`;
+    }
+  }
+}
+
+async function getCommissionRate(){
+  const {data} = await sb.from("settings").select("value").eq("key","commission_rate").maybeSingle();
+  return data ? parseFloat(data.value) : 50;
+}
+
+async function calcSales(){
+  const sales = parseFloat(document.getElementById("sv-sales").value);
+  if(!sales||sales<=0){alert("売上金額を入力してください");return;}
+  const rate = await getCommissionRate();
+  const claim = Math.round(sales*rate/100);
+  document.getElementById("sv-rate-val").textContent = rate;
+  document.getElementById("sv-claim-val").textContent = fmt(claim);
+  document.getElementById("sv-rate-disp").style.display = "block";
+  document.getElementById("sv-save-btn").style.display = "block";
+  pendingSalesData = {sales,rate,claim};
+}
+
+async function saveSales(){
+  if(!pendingSalesData){alert("先に計算してください");return;}
+  const month = document.getElementById("sv-month").value;
+  const memo = document.getElementById("sv-memo").value;
+  if(!month){alert("対象月を選択してください");return;}
+  setSync("s","ing");
+  const {error} = await sb.from("sales").insert({user_id:me.id,month,sales_amount:pendingSalesData.sales,commission_rate:pendingSalesData.rate,claim_amount:pendingSalesData.claim,memo,staff_name:myProfile?.name||me.email});
+  if(error){alert("保存エラー："+error.message);setSync("s","done");return;}
+  setSync("s","done");
+  document.getElementById("sv-sales").value="";
+  document.getElementById("sv-memo").value="";
+  document.getElementById("sv-rate-disp").style.display="none";
+  document.getElementById("sv-save-btn").style.display="none";
+  pendingSalesData=null;
+  alert("売上を保存しました");
+  loadSalesList();
+}
+
+async function loadSalesList(){
+  const {data} = await sb.from("sales").select("*").eq("user_id",me.id).order("month",{ascending:false});
+  const c = document.getElementById("sv-list-c");
+  const items = data||[];
+  if(!items.length){c.innerHTML="<div class=\"empty\">売上記録がありません</div>";return;}
+  c.innerHTML = items.map(s=>`<div class="item-row"><span class="i-dt">${s.month}</span><span style="flex:1;font-size:13px">${s.memo||"売上"}</span><span style="font-size:11px;color:#888">${s.commission_rate}%</span><span class="i-am" style="color:#1D9E75">${fmt(s.claim_amount)}</span><button class="del-btn" onclick="exportInvoicePDF(\"${s.month}\",${s.sales_amount},${s.commission_rate},${s.claim_amount},\"${s.memo||""}\")">🧾</button></div>`).join("");
+}
+
+async function exportInvoicePDF(month,salesAmt,rate,claimAmt,memo){
+  const staffName = myProfile?.name||me.email;
+  const today = new Date();
+  const dateStr = today.getFullYear()+"年"+String(today.getMonth()+1).padStart(2,"0")+"月"+String(today.getDate()).padStart(2,"0")+"日";
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>body{font-family:"Hiragino Sans",sans-serif;padding:40px;max-width:600px;margin:0 auto}h1{font-size:24px;text-align:center;margin-bottom:30px;border-bottom:2px solid #1D9E75;padding-bottom:10px;color:#1D9E75}.row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#1D9E75;color:#fff;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #eee}.tot td{font-weight:bold;background:#f0fdf4;font-size:16px}.ft{margin-top:30px;font-size:12px;color:#888;text-align:center}</style></head><body><h1>請　求　書</h1><div class="row"><span>発行日</span><span>${dateStr}</span></div><div class="row"><span>請求者</span><span>${staffName}</span></div><div class="row"><span>対象月</span><span>${month.replace("-","年")}月分</span></div><div class="row"><span>請求先</span><span>Hair Beauty Storia 御中</span></div><table><tr><th>項目</th><th>金額</th></tr><tr><td>美容師業務 売上高</td><td>${fmt(salesAmt)}</td></tr><tr><td>歩合率</td><td>${rate}%</td></tr>${memo?`<tr><td>備考</td><td>${memo}</td></tr>`:"" }<tr class="tot"><td>請求金額</td><td>${fmt(claimAmt)}</td></tr></table><div class="ft">Hair Beauty Storia ダブルワーク制度</div></body></html>`;
+  const w=window.open("","_blank");
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
+
+async function loadProfit(){
+  const year = document.getElementById("pf-year")?.value||new Date().getFullYear();
+  const months=Array.from({length:12},(_,i)=>year+"-"+String(i+1).padStart(2,"0"));
+  const {data:salesData}=await sb.from("sales").select("*").eq("user_id",me.id).gte("month",year+"-01").lte("month",year+"-12");
+  const {data:expData}=await sb.from("expenses").select("*").gte("date",year+"-01-01").lte("date",year+"-12-31");
+  const sM={},eM={};
+  months.forEach(m=>{sM[m]=0;eM[m]=0;});
+  (salesData||[]).forEach(s=>{sM[s.month]=(sM[s.month]||0)+s.claim_amount;});
+  (expData||[]).forEach(e=>{const m=e.date.slice(0,7);eM[m]=(eM[m]||0)+e.amount;});
+  const ts=Object.values(sM).reduce((a,b)=>a+b,0);
+  const te=Object.values(eM).reduce((a,b)=>a+b,0);
+  const tp=ts-te;
+  document.getElementById("pf-sales").textContent=fmt(ts);
+  document.getElementById("pf-exp").textContent=fmt(te);
+  const pp=document.getElementById("pf-profit");
+  pp.textContent=fmt(tp);
+  pp.style.color=tp>=0?"#1D9E75":"#dc2626";
+  const maxV=Math.max(...months.map(m=>Math.max(sM[m],eM[m])),1);
+  document.getElementById("pf-chart").innerHTML=`<div style="display:flex;align-items:flex-end;gap:3px;height:130px;padding:8px 0;min-width:500px">${months.map(m=>{const s=sM[m],e=eM[m],p=s-e,sh=Math.max(s/maxV*90,s>0?3:0),eh=Math.max(e/maxV*90,e>0?3:0);return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;display:flex;gap:1px;align-items:flex-end;height:90px"><div style="flex:1;background:#1D9E75;border-radius:2px 2px 0 0;height:${sh}px"></div><div style="flex:1;background:#f59e0b;border-radius:2px 2px 0 0;height:${eh}px"></div></div><div style="font-size:9px;color:${p>=0?"#1D9E75":"#dc2626"}">${m.slice(5)}月</div></div>`;}).join("")}</div><div style="display:flex;gap:12px;font-size:11px;color:#888;margin-top:4px"><span>🟢 売上</span><span>🟡 経費</span></div>`;
+  calcTax(tp);
+  document.getElementById("pf-monthly-table").innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><tr style="background:#f5f5f0"><th style="padding:6px;text-align:left">月</th><th style="padding:6px;text-align:right">売上</th><th style="padding:6px;text-align:right">経費</th><th style="padding:6px;text-align:right">利益</th></tr>${months.map(m=>{const s=sM[m],e=eM[m],p=s-e;if(s===0&&e===0)return"";return`<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:6px">${m.slice(5)}月</td><td style="padding:6px;text-align:right;color:#1D9E75">${fmt(s)}</td><td style="padding:6px;text-align:right;color:#b45309">${fmt(e)}</td><td style="padding:6px;text-align:right;color:${p>=0?"#1D9E75":"#dc2626"};font-weight:500">${fmt(p)}</td></tr>`;}).join("")}</table>`;
+}
+
+function calcTax(profit){
+  const BD=650000,BC=480000;
+  const si=Math.round(profit*0.15);
+  const ab=Math.max(profit-BD,0);
+  const ti=Math.max(ab-BC-si,0);
+  let it=0;
+  for(const [lim,r,d] of [[1950000,.05,0],[3300000,.1,97500],[6950000,.2,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.4,2796000],[Infinity,.45,4796000]]){
+    if(ti<=lim){it=Math.round(ti*r-d);break;}
+  }
+  const rt=Math.round(it*.021),rst=Math.round(ti*.1),tot=it+rt+rst;
+  document.getElementById("pf-tax-detail").innerHTML=`<div style="font-size:13px"><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0"><span>事業所得（利益）</span><span style="font-weight:500">${fmt(profit)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1D9E75"><span>青色申告特別控除</span><span>－${fmt(Math.min(BD,profit))}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1D9E75"><span>基礎控除</span><span>－${fmt(BC)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1D9E75"><span>社会保険料控除（概算）</span><span>－${fmt(si)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:2px solid #1D9E75"><span style="font-weight:500">課税所得</span><span style="font-weight:500">${fmt(ti)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0"><span>所得税</span><span style="color:#b45309;font-weight:500">${fmt(it)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0"><span>復興特別所得税</span><span style="color:#b45309">${fmt(rt)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0"><span>住民税（概算）</span><span style="color:#b45309">${fmt(rst)}</span></div><div style="background:#fff8f0;border-radius:6px;padding:10px;margin-top:4px;display:flex;justify-content:space-between"><span style="font-weight:600">税金合計（概算）</span><span style="color:#dc2626;font-weight:700;font-size:16px">${fmt(tot)}</span></div></div>`;
+  document.getElementById("pf-tax-note").innerHTML="💡 <strong>確定申告のポイント</strong><br>・青色申告で65万円控除：e-Taxでの電子申告が必要<br>・経費の領収書は7年間保管してください<br>・この計算は概算です。税理士への相談をお勧めします";
 }
 
 /* ─── セッション復元 ─── */
