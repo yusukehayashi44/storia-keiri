@@ -636,10 +636,10 @@ function adminTab(name,idx){
   if(name==="data")loadAdminDataTab();
 }
 async function loadAdminStaffSel(){
-}
   const {data}=await sb.from('profiles').select('id,name').eq('role','staff').order('name');
   const sel=Q('a-rs');
   if(sel&&data)sel.innerHTML=data.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
 async function saveCommissionRate(){
   const rate = parseFloat(document.getElementById("a-rate-input").value);
   if(!rate||rate<=0||rate>100){alert("1〜100の数値を入力してください");return;}
@@ -656,7 +656,6 @@ async function loadAdminDataTab(){
   }
 }
 
-}
 async function loadAdminOverview(){
   setSync('a','ing');
   const m=curM();
