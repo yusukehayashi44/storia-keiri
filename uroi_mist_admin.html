@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>うるおいミスト 管理ダッシュボード | STORIA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --gold: #B8986A;
+    --gold-light: #D4B483;
+    --dark: #1A1A1A;
+    --dark2: #2D2D2D;
+    --gray: #666;
+    --gray-light: #F5F5F5;
+    --border: #E0D8CC;
+    --white: #FFFFFF;
+    --green: #4CAF50;
+    --red: #e53935;
+    --blue: #1976D2;
+    --font: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Meiryo',sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: #EDEAE4; color: var(--dark); font-size: 14px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--dark) 0%, var(--dark2) 100%);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 2px solid var(--gold);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left .logo { color: var(--gold); font-size: 10px; letter-spacing: 3px; }
+  .header-left .title { color: var(--white); font-size: 17px; font-weight: 800; }
+  .btn-refresh {
+    padding: 8px 16px; background: var(--gold); color: var(--dark);
+    border: none; border-radius: 6px; font-size: 12px; font-weight: 700;
+    cursor: pointer; font-family: var(--font);
+  }
+
+  /* Nav */
+  .nav {
+    background: var(--dark2);
+    display: flex; gap: 0;
+    border-bottom: 1px solid #444;
+  }
+  .nav-btn {
+    padding: 12px 20px; border: none; background: transparent;
+    color: #999; font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: var(--font); border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* Main */
+  .main { padding: 20px; max-width: 1100px; margin: 0 auto; }
+
+  /* Page */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .sum-card {
+    background: var(--white); border-radius: 10px; padding: 16px;
+    border: 1px solid var(--border); text-align: center;
+  }
+  .sum-card .num { font-size: 32px; font-weight: 900; color: var(--gold); }
+  .sum-card .label { font-size: 12px; color: var(--gray); margin-top: 4px; }
+  .sum-card .sub { font-size: 11px; color: #bbb; margin-top: 2px; }
+
+  /* Card */
+  .card {
+    background: var(--white); border-radius: 10px; border: 1px solid var(--border);
+    margin-bottom: 16px; overflow: hidden;
+  }
+  .card-head {
+    background: linear-gradient(90deg, var(--dark), var(--dark2));
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { color: var(--white); font-size: 14px; font-weight: 700; }
+  .card-body { padding: 16px; }
+
+  /* Chart wrap */
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap-tall { position: relative; height: 300px; }
+
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    background: var(--gray-light); padding: 8px 10px;
+    border: 1px solid var(--border); text-align: left;
+    font-weight: 700; white-space: nowrap;
+  }
+  .data-table td { padding: 7px 10px; border: 1px solid var(--border); vertical-align: top; }
+  .data-table tr:nth-child(even) td { background: #FAFAFA; }
+  .table-scroll { overflow-x: auto; }
+
+  /* Store progress */
+  .store-bars { display: flex; flex-direction: column; gap: 10px; }
+  .store-bar-row { display: flex; align-items: center; gap: 10px; }
+  .store-name { width: 60px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 24px; background: var(--gray-light); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 4px; transition: width 0.6s; display: flex; align-items: center; padding-left: 8px; }
+  .bar-fill .bar-text { font-size: 11px; font-weight: 700; color: var(--dark); }
+  .bar-count { width: 40px; font-size: 12px; font-weight: 700; text-align: right; color: var(--gold); flex-shrink: 0; }
+
+  /* Rating avg */
+  .rating-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .rating-row:last-child { border-bottom: none; }
+  .rating-label { width: 120px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .rating-bar-track { flex: 1; height: 18px; background: var(--gray-light); border-radius: 10px; overflow: hidden; }
+  .rating-bar-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--gold), var(--gold-light)); transition: width 0.6s; }
+  .rating-val { width: 36px; font-size: 14px; font-weight: 900; color: var(--gold); text-align: right; flex-shrink: 0; }
+
+  /* Export btn */
+  .export-area { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .export-btn {
+    padding: 10px 20px; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: var(--font); transition: opacity 0.2s;
+  }
+  .export-btn:hover { opacity: 0.85; }
+  .btn-csv { background: var(--green); color: white; }
+  .btn-json { background: var(--blue); color: white; }
+  .btn-report { background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: var(--dark); }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .filter-label { font-size: 12px; font-weight: 700; color: var(--gray); }
+  .filter-select {
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 12px; font-family: var(--font); cursor: pointer;
+  }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin: 1px; }
+  .tag-gold { background: rgba(184,152,106,0.15); color: var(--gold); }
+
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--gray); font-size: 14px; }
+
+  /* Comment list */
+  .comment-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+  .comment-item {
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+    border-left: 3px solid var(--gold); font-size: 12px; background: var(--gray-light);
+  }
+  .comment-meta { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+  /* Print report */
+  @media print {
+    .header, .nav, .export-area, .filter-row, .btn-refresh { display: none !important; }
+    .page { display: block !important; }
+    body { background: white; }
+    .card { break-inside: avoid; }
+  }
+
+  @media (max-width: 700px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">STORIA GROUP — ADMIN</div>
+    <div class="title">📊 うるおいミスト アンケート管理</div>
+  </div>
+  <button class="btn-refresh" onclick="loadAll()">🔄 更新</button>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showPage('overview')">📈 進捗・全体</button>
+  <button class="nav-btn" onclick="showPage('compare')">⚖️ スタッフ / お客様 比較</button>
+  <button class="nav-btn" onclick="showPage('staff')">🔬 スタッフ詳細</button>
+  <button class="nav-btn" onclick="showPage('customer')">💆 お客様詳細</button>
+  <button class="nav-btn" onclick="showPage('export')">📤 レポート出力</button>
+</div>
+
+<div class="main">
+
+<!-- ===== PAGE: COMPARE ===== -->
+<div class="page" id="page-compare">
+  <div class="chart-grid" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-head"><div class="card-title">⭐ 評価スコア比較（スタッフ vs お客様）</div></div>
+      <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-compare-ratings"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">✨ 最も実感した効果 比較</div></div>
+      <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-compare-effects"></canvas></div></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-head"><div class="card-title">😟 使用前の悩み 比較</div></div>
+      <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-compare-concerns"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">💫 使用後に感じた変化 比較</div></div>
+      <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-compare-changes"></canvas></div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">📊 スコア差分サマリー（スタッフ平均 − お客様平均）</div></div>
+    <div class="card-body" id="compare-diff-table"></div>
+  </div>
+</div>
+
+<!-- ===== PAGE: OVERVIEW ===== -->
+<div class="page active" id="page-overview">
+  <div class="summary-grid">
+    <div class="sum-card"><div class="num" id="ov-staff-count">—</div><div class="label">スタッフ回答数</div></div>
+    <div class="sum-card"><div class="num" id="ov-cust-count">—</div><div class="label">お客様回答数</div></div>
+    <div class="sum-card"><div class="num" id="ov-avg-rating">—</div><div class="label">平均評価スコア</div><div class="sub">全項目平均</div></div>
+    <div class="sum-card"><div class="num" id="ov-stores">6</div><div class="label">参加店舗数</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">🏪 店舗別 回答数</div></div>
+    <div class="card-body">
+      <div class="store-bars" id="store-bars-ov">
+        <div class="loading">データ読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-head"><div class="card-title">📅 日別 回答推移（スタッフ）</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-daily-staff"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">📅 日別 回答推移（お客様）</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-daily-cust"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: STAFF ===== -->
+<div class="page" id="page-staff">
+  <div class="filter-row">
+    <span class="filter-label">絞り込み：</span>
+    <select class="filter-select" id="filter-staff-store" onchange="renderStaffAnalysis()">
+      <option value="">全店舗</option>
+      <option>品川</option><option>蒲田</option><option>大井町</option>
+      <option>池上</option><option>川崎</option><option>大森</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">⭐ 使用感 平均スコア（スタッフ）</div></div>
+    <div class="card-body" id="staff-ratings-display">
+      <div class="loading">データ読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-head"><div class="card-title">✨ 最も実感した効果</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-staff-top-effect"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">💊 ホームケア活用意向</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-staff-homecare"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">👥 おすすめ客層（複数選択集計）</div></div>
+    <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-staff-recommend"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">💬 スタッフ声（ミーティング用キーワード）</div></div>
+    <div class="card-body">
+      <div class="comment-list" id="staff-appeal-list">
+        <div class="loading">データ読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">📋 スタッフ回答一覧</div></div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table class="data-table" id="staff-table">
+          <thead><tr><th>日付</th><th>名前</th><th>店舗</th><th>髪質</th><th>使用期間</th><th>香り</th><th>なじみ</th><th>ベタつき</th><th>使いやすさ</th><th>最大効果</th><th>HC活用</th></tr></thead>
+          <tbody id="staff-tbody"><tr><td colspan="11" class="loading">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: CUSTOMER ===== -->
+<div class="page" id="page-customer">
+  <div class="filter-row">
+    <span class="filter-label">絞り込み：</span>
+    <select class="filter-select" id="filter-cust-store" onchange="renderCustomerAnalysis()">
+      <option value="">全店舗</option>
+      <option>品川</option><option>蒲田</option><option>大井町</option>
+      <option>池上</option><option>川崎</option><option>大森</option>
+    </select>
+    <select class="filter-select" id="filter-cust-age" onchange="renderCustomerAnalysis()">
+      <option value="">全年代</option>
+      <option>10代</option><option>20代</option><option>30代</option>
+      <option>40代</option><option>50代</option><option>60代以上</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">⭐ 使用感 平均スコア（お客様）</div></div>
+    <div class="card-body" id="cust-ratings-display">
+      <div class="loading">データ読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-head"><div class="card-title">✨ 最も実感した効果</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-cust-top-effect"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">👤 年代別 分布</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-cust-age"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">💬 お客様の声（改善点・良かった点）</div></div>
+    <div class="card-body">
+      <p style="font-size:12px;color:var(--gray);margin-bottom:8px;">◆ 良かった点</p>
+      <div class="comment-list" id="cust-good-list"></div>
+      <p style="font-size:12px;color:var(--gray);margin:12px 0 8px;">◆ 改善点</p>
+      <div class="comment-list" id="cust-improve-list"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">📋 お客様回答一覧</div></div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table class="data-table" id="cust-table">
+          <thead><tr><th>日付</th><th>店舗</th><th>年代</th><th>髪質改善経験</th><th>髪質</th><th>香り</th><th>なじみ</th><th>ベタつき</th><th>使いやすさ</th><th>最大効果</th></tr></thead>
+          <tbody id="cust-tbody"><tr><td colspan="10" class="loading">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: EXPORT ===== -->
+<div class="page" id="page-export">
+  <div class="card">
+    <div class="card-head"><div class="card-title">📤 データエクスポート</div></div>
+    <div class="card-body">
+      <div class="export-area">
+        <button class="export-btn btn-csv" onclick="exportCSV('staff')">📥 スタッフデータ CSV</button>
+        <button class="export-btn btn-csv" onclick="exportCSV('customer')">📥 お客様データ CSV</button>
+        <button class="export-btn btn-json" onclick="exportJSON('staff')">📥 スタッフデータ JSON</button>
+        <button class="export-btn btn-json" onclick="exportJSON('customer')">📥 お客様データ JSON</button>
+      </div>
+      <p style="font-size:12px;color:var(--gray);">※ CSV・JSONデータはメーカーへの提出用レポートの元データとして活用できます。</p>
+    </div>
+  </div>
+
+  <div class="card" id="report-preview">
+    <div class="card-head">
+      <div class="card-title">📄 分析レポート（メーカー提出用プレビュー）</div>
+      <button class="export-btn btn-report" onclick="printReport()" style="padding:6px 14px;font-size:12px;">🖨 印刷 / PDF保存</button>
+    </div>
+    <div class="card-body" id="report-content">
+      <div style="max-width:700px;margin:0 auto;font-size:13px;line-height:1.8;">
+        <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--gold);">
+          <div style="font-size:11px;color:var(--gray);letter-spacing:2px;">CONFIDENTIAL — FOR MANUFACTURER</div>
+          <h1 style="font-size:22px;font-weight:900;color:var(--dark);margin:8px 0 4px;">うるおいミスト（Oblix Mist）</h1>
+          <div style="font-size:15px;color:var(--gold);font-weight:700;">製品検証アンケート 分析レポート</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:6px;">Hair Beauty STORIA グループ（6店舗）</div>
+          <div style="font-size:12px;color:var(--gray);" id="report-date">集計日：—</div>
+        </div>
+
+        <h2 style="font-size:15px;background:var(--dark);color:var(--white);padding:8px 12px;border-radius:4px;margin-bottom:12px;">1. 調査概要</h2>
+        <table class="data-table" style="margin-bottom:20px;">
+          <tr><th>調査期間</th><td id="r-period">—</td></tr>
+          <tr><th>調査対象</th><td>Hair Beauty STORIA グループ スタッフ / 来店客</td></tr>
+          <tr><th>スタッフ回答数</th><td id="r-staff-n">—</td></tr>
+          <tr><th>お客様回答数</th><td id="r-cust-n">—</td></tr>
+          <tr><th>参加店舗</th><td>品川・蒲田・大井町・池上・川崎・大森（計6店舗）</td></tr>
+        </table>
+
+        <h2 style="font-size:15px;background:var(--dark);color:var(--white);padding:8px 12px;border-radius:4px;margin-bottom:12px;">2. スタッフ評価サマリー</h2>
+        <div id="r-staff-ratings" style="margin-bottom:20px;"></div>
+
+        <h2 style="font-size:15px;background:var(--dark);color:var(--white);padding:8px 12px;border-radius:4px;margin-bottom:12px;">3. お客様評価サマリー</h2>
+        <div id="r-cust-ratings" style="margin-bottom:20px;"></div>
+
+        <h2 style="font-size:15px;background:var(--dark);color:var(--white);padding:8px 12px;border-radius:4px;margin-bottom:12px;">4. 主要発見事項</h2>
+        <div id="r-findings" style="margin-bottom:20px;"></div>
+
+        <h2 style="font-size:15px;background:var(--dark);color:var(--white);padding:8px 12px;border-radius:4px;margin-bottom:12px;">5. スタッフの声（抜粋）</h2>
+        <div id="r-staff-voices" style="margin-bottom:20px;font-style:italic;"></div>
+
+        <div style="margin-top:32px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--gray);text-align:center;">
+          Hair Beauty STORIA グループ / 株式会社サムシングニューコーポレーション<br>
+          本レポートは機密情報を含みます。配布先は製品メーカーに限定してください。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ===================== CONFIG =====================
+const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allStaff = [], allCustomer = [];
+let charts = {};
+
+// ===================== NAV =====================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'export') buildReport();
+  if (id === 'compare') renderCompare();
+}
+
+
+// ===================== COMPARE (スタッフ vs お客様) =====================
+function renderCompare() {
+  const ratingKeys = [
+    ['rating_scent','香り'],
+    ['rating_absorption','なじみやすさ'],
+    ['rating_non_sticky','ベタつきの少なさ'],
+    ['rating_ease_of_use','使いやすさ']
+  ];
+
+  // スコア比較グループ棒グラフ
+  const staffAvgs = ratingKeys.map(([k]) => {
+    const vals = allStaff.map(r=>r[k]).filter(Boolean);
+    return vals.length ? parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)) : 0;
+  });
+  const custAvgs = ratingKeys.map(([k]) => {
+    const vals = allCustomer.map(r=>r[k]).filter(Boolean);
+    return vals.length ? parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)) : 0;
+  });
+  destroyChart('chart-compare-ratings');
+  const ctx1 = document.getElementById('chart-compare-ratings');
+  if(ctx1) charts['chart-compare-ratings'] = new Chart(ctx1.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ratingKeys.map(([,l])=>l),
+      datasets: [
+        { label: 'スタッフ', data: staffAvgs, backgroundColor: 'rgba(184,152,106,0.85)', borderRadius: 4 },
+        { label: 'お客様', data: custAvgs, backgroundColor: 'rgba(100,160,220,0.85)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { min: 0, max: 5, ticks: { stepSize: 1 } } },
+      plugins: { legend: { position: 'top' } }
+    }
+  });
+
+  // 効果比較
+  const effectLabels = ['ツヤ','サラサラ感','まとまり','保湿感','指通り'];
+  const countEffect = (data) => effectLabels.map(e => data.filter(r=>r.top_effect===e).length);
+  destroyChart('chart-compare-effects');
+  const ctx2 = document.getElementById('chart-compare-effects');
+  if(ctx2) charts['chart-compare-effects'] = new Chart(ctx2.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: effectLabels,
+      datasets: [
+        { label: 'スタッフ', data: countEffect(allStaff), backgroundColor: 'rgba(184,152,106,0.85)', borderRadius: 4 },
+        { label: 'お客様', data: countEffect(allCustomer), backgroundColor: 'rgba(100,160,220,0.85)', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { stepSize: 1 } } } }
+  });
+
+  // 使用前の悩み比較
+  const concernLabels = ['パサつき','広がり','ツヤ不足','毛先の引っかかり','うねり','ダメージ','まとまりにくい'];
+  const countArr = (data, labels) => labels.map(l => data.filter(r=>(r.concerns_before||[]).includes(l)).length);
+  destroyChart('chart-compare-concerns');
+  const ctx3 = document.getElementById('chart-compare-concerns');
+  if(ctx3) charts['chart-compare-concerns'] = new Chart(ctx3.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: concernLabels,
+      datasets: [
+        { label: 'スタッフ', data: countArr(allStaff, concernLabels), backgroundColor: 'rgba(184,152,106,0.85)', borderRadius: 4 },
+        { label: 'お客様', data: countArr(allCustomer, concernLabels), backgroundColor: 'rgba(100,160,220,0.85)', borderRadius: 4 }
+      ]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { ticks: { stepSize: 1 } } } }
+  });
+
+  // 変化比較
+  const changeLabels = ['ツヤ','指通り','保湿感','まとまり','広がり軽減','毛先の収まり','アイロン後の質感','熱ダメージ軽減','翌朝の扱いやすさ'];
+  destroyChart('chart-compare-changes');
+  const ctx4 = document.getElementById('chart-compare-changes');
+  if(ctx4) charts['chart-compare-changes'] = new Chart(ctx4.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: changeLabels,
+      datasets: [
+        { label: 'スタッフ', data: countArr(allStaff, changeLabels), backgroundColor: 'rgba(184,152,106,0.85)', borderRadius: 4 },
+        { label: 'お客様', data: countArr(allCustomer, changeLabels), backgroundColor: 'rgba(100,160,220,0.85)', borderRadius: 4 }
+      ]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { ticks: { stepSize: 1 } } } }
+  });
+
+  // 差分テーブル
+  const diffEl = document.getElementById('compare-diff-table');
+  if(diffEl) {
+    const rows = ratingKeys.map(([k,label], i) => {
+      const diff = (staffAvgs[i] - custAvgs[i]).toFixed(2);
+      const color = parseFloat(diff) > 0 ? '#4CAF50' : parseFloat(diff) < 0 ? '#e53935' : '#666';
+      const arrow = parseFloat(diff) > 0 ? '▲' : parseFloat(diff) < 0 ? '▼' : '±';
+      return `<tr>
+        <td>${label}</td>
+        <td style="text-align:center;font-weight:700;">${staffAvgs[i]}</td>
+        <td style="text-align:center;font-weight:700;">${custAvgs[i]}</td>
+        <td style="text-align:center;font-weight:800;color:${color};">${arrow} ${Math.abs(diff)}</td>
+      </tr>`;
+    }).join('');
+    diffEl.innerHTML = `<table class="data-table"><thead><tr><th>項目</th><th>スタッフ平均</th><th>お客様平均</th><th>差分</th></tr></thead><tbody>${rows}</tbody></table>
+    <p style="font-size:11px;color:var(--gray);margin-top:8px;">▲ スタッフの評価が高い　▼ お客様の評価が高い</p>`;
+  }
+}
+
+// ===================== LOAD DATA =====================
+async function loadAll() {
+  const [sr, cr] = await Promise.all([
+    sb.from('staff_surveys').select('*').order('created_at', { ascending: true }),
+    sb.from('customer_surveys').select('*').order('created_at', { ascending: true })
+  ]);
+  allStaff = sr.data || [];
+  allCustomer = cr.data || [];
+  renderOverview();
+  renderStaffAnalysis();
+  renderCustomerAnalysis();
+  renderCompare();
+}
+
+// ===================== OVERVIEW =====================
+function renderOverview() {
+  document.getElementById('ov-staff-count').textContent = allStaff.length;
+  document.getElementById('ov-cust-count').textContent = allCustomer.length;
+
+  // avg rating
+  const all = [...allStaff, ...allCustomer];
+  const ratings = all.flatMap(r => [r.rating_scent,r.rating_absorption,r.rating_non_sticky,r.rating_ease_of_use].filter(Boolean));
+  const avg = ratings.length ? (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1) : '—';
+  document.getElementById('ov-avg-rating').textContent = avg;
+
+  // store bars
+  const stores = ['品川','蒲田','大井町','池上','川崎','大森'];
+  const maxCount = Math.max(...stores.map(s => (allStaff.filter(r=>r.store_name===s).length + allCustomer.filter(r=>r.store_name===s).length))) || 1;
+  const barsEl = document.getElementById('store-bars-ov');
+  barsEl.innerHTML = stores.map(s => {
+    const sc = allStaff.filter(r=>r.store_name===s).length;
+    const cc = allCustomer.filter(r=>r.store_name===s).length;
+    const total = sc+cc;
+    const pct = Math.round(total/maxCount*100);
+    return `<div class="store-bar-row">
+      <div class="store-name">${s}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"><span class="bar-text">Staff:${sc} 客:${cc}</span></div></div>
+      <div class="bar-count">${total}</div>
+    </div>`;
+  }).join('');
+
+  // daily charts
+  renderDailyChart('chart-daily-staff', allStaff, 'rgba(184,152,106,0.8)');
+  renderDailyChart('chart-daily-cust', allCustomer, 'rgba(100,160,220,0.8)');
+}
+
+function renderDailyChart(id, data, color) {
+  const counts = {};
+  data.forEach(r => { const d=r.respondent_date||r.created_at?.split('T')[0]; if(d) counts[d]=(counts[d]||0)+1; });
+  const labels = Object.keys(counts).sort();
+  const vals = labels.map(l => counts[l]);
+  destroyChart(id);
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: vals, backgroundColor: color, borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { stepSize: 1 } } } }
+  });
+}
+
+// ===================== STAFF ANALYSIS =====================
+function renderStaffAnalysis() {
+  const store = document.getElementById('filter-staff-store').value;
+  const data = store ? allStaff.filter(r=>r.store_name===store) : allStaff;
+
+  // ratings
+  const ratingKeys = [
+    ['rating_scent','香り'], ['rating_absorption','なじみやすさ'],
+    ['rating_non_sticky','ベタつきの少なさ'], ['rating_ease_of_use','使いやすさ']
+  ];
+  document.getElementById('staff-ratings-display').innerHTML = ratingKeys.map(([k,label]) => {
+    const vals = data.map(r=>r[k]).filter(Boolean);
+    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : 0;
+    return `<div class="rating-row">
+      <div class="rating-label">${label}</div>
+      <div class="rating-bar-track"><div class="rating-bar-fill" style="width:${avg/5*100}%"></div></div>
+      <div class="rating-val">${avg||'—'}</div>
+    </div>`;
+  }).join('');
+
+  // top effect chart
+  renderPieChart('chart-staff-top-effect', countField(data,'top_effect'));
+
+  // homecare chart
+  renderPieChart('chart-staff-homecare', countField(data,'homecare_useful'), [
+    '#4CAF50','#8BC34A','#FFC107','#FF5722','#9E9E9E'
+  ]);
+
+  // recommend chart
+  const recCounts = {};
+  data.forEach(r => (r.recommended_customers||[]).forEach(v => recCounts[v]=(recCounts[v]||0)+1));
+  renderBarChart('chart-staff-recommend', recCounts, 'rgba(184,152,106,0.8)');
+
+  // appeal voices
+  const voices = data.filter(r=>r.staff_appeal_words).slice(0,10);
+  document.getElementById('staff-appeal-list').innerHTML = voices.length
+    ? voices.map(r=>`<div class="comment-item">${esc(r.staff_appeal_words)}<div class="comment-meta">${r.staff_name||'—'} / ${r.store_name||'—'} / ${r.respondent_date||'—'}</div></div>`).join('')
+    : '<div style="color:var(--gray);font-size:12px;padding:8px;">データがありません</div>';
+
+  // table
+  const tbody = document.getElementById('staff-tbody');
+  tbody.innerHTML = data.length ? data.map(r=>`<tr>
+    <td>${r.respondent_date||'—'}</td>
+    <td>${esc(r.staff_name||'—')}</td>
+    <td>${r.store_name||'—'}</td>
+    <td>${(r.hair_types||[]).map(t=>`<span class="tag tag-gold">${t}</span>`).join('')}</td>
+    <td>${r.usage_period||'—'}</td>
+    <td>${r.rating_scent||'—'}</td>
+    <td>${r.rating_absorption||'—'}</td>
+    <td>${r.rating_non_sticky||'—'}</td>
+    <td>${r.rating_ease_of_use||'—'}</td>
+    <td>${r.top_effect||'—'}</td>
+    <td>${r.homecare_useful||'—'}</td>
+  </tr>`).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--gray);">データがありません</td></tr>';
+}
+
+// ===================== CUSTOMER ANALYSIS =====================
+function renderCustomerAnalysis() {
+  const store = document.getElementById('filter-cust-store').value;
+  const age = document.getElementById('filter-cust-age').value;
+  let data = allCustomer;
+  if (store) data = data.filter(r=>r.store_name===store);
+  if (age) data = data.filter(r=>r.age_group===age);
+
+  // ratings
+  const ratingKeys = [
+    ['rating_scent','香り'],['rating_absorption','なじみやすさ'],
+    ['rating_non_sticky','ベタつきの少なさ'],['rating_ease_of_use','使いやすさ']
+  ];
+  document.getElementById('cust-ratings-display').innerHTML = ratingKeys.map(([k,label]) => {
+    const vals = data.map(r=>r[k]).filter(Boolean);
+    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : 0;
+    return `<div class="rating-row">
+      <div class="rating-label">${label}</div>
+      <div class="rating-bar-track"><div class="rating-bar-fill" style="width:${avg/5*100}%"></div></div>
+      <div class="rating-val">${avg||'—'}</div>
+    </div>`;
+  }).join('');
+
+  renderPieChart('chart-cust-top-effect', countField(data,'top_effect'));
+  renderPieChart('chart-cust-age', countField(data,'age_group'), [
+    '#B8986A','#D4B483','#8BC34A','#64B5F6','#CE93D8','#F48FB1'
+  ]);
+
+  // comments
+  const good = data.filter(r=>r.good_points).slice(0,8);
+  document.getElementById('cust-good-list').innerHTML = good.length
+    ? good.map(r=>`<div class="comment-item">${esc(r.good_points)}<div class="comment-meta">${r.store_name||'—'} / ${r.age_group||'—'} / ${r.respondent_date||'—'}</div></div>`).join('')
+    : '<div style="color:var(--gray);font-size:12px;padding:8px;">データがありません</div>';
+  const improve = data.filter(r=>r.improvement_points).slice(0,8);
+  document.getElementById('cust-improve-list').innerHTML = improve.length
+    ? improve.map(r=>`<div class="comment-item">${esc(r.improvement_points)}<div class="comment-meta">${r.store_name||'—'} / ${r.age_group||'—'} / ${r.respondent_date||'—'}</div></div>`).join('')
+    : '<div style="color:var(--gray);font-size:12px;padding:8px;">データがありません</div>';
+
+  // table
+  const tbody = document.getElementById('cust-tbody');
+  tbody.innerHTML = data.length ? data.map(r=>`<tr>
+    <td>${r.respondent_date||'—'}</td>
+    <td>${r.store_name||'—'}</td>
+    <td>${r.age_group||'—'}</td>
+    <td>${r.has_haircare_experience===true?'あり':r.has_haircare_experience===false?'なし':'—'}</td>
+    <td>${(r.hair_types||[]).map(t=>`<span class="tag tag-gold">${t}</span>`).join('')}</td>
+    <td>${r.rating_scent||'—'}</td>
+    <td>${r.rating_absorption||'—'}</td>
+    <td>${r.rating_non_sticky||'—'}</td>
+    <td>${r.rating_ease_of_use||'—'}</td>
+    <td>${r.top_effect||'—'}</td>
+  </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--gray);">データがありません</td></tr>';
+}
+
+// ===================== REPORT =====================
+function buildReport() {
+  document.getElementById('report-date').textContent = '集計日：' + new Date().toLocaleDateString('ja-JP');
+  document.getElementById('r-staff-n').textContent = allStaff.length + '名';
+  document.getElementById('r-cust-n').textContent = allCustomer.length + '名';
+
+  const allDates = [...allStaff,...allCustomer].map(r=>r.respondent_date).filter(Boolean).sort();
+  document.getElementById('r-period').textContent = allDates.length ? `${allDates[0]} 〜 ${allDates[allDates.length-1]}` : '—';
+
+  const ratingKeys = [['rating_scent','香り'],['rating_absorption','なじみやすさ'],['rating_non_sticky','ベタつきの少なさ'],['rating_ease_of_use','使いやすさ']];
+  const makeRatingTable = (data) => `<table class="data-table"><thead><tr><th>評価項目</th><th>平均スコア（/5.0）</th><th>回答数</th></tr></thead><tbody>` +
+    ratingKeys.map(([k,label]) => {
+      const vals = data.map(r=>r[k]).filter(Boolean);
+      const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : '—';
+      return `<tr><td>${label}</td><td><strong>${avg}</strong></td><td>${vals.length}件</td></tr>`;
+    }).join('') + '</tbody></table>';
+
+  document.getElementById('r-staff-ratings').innerHTML = makeRatingTable(allStaff);
+  document.getElementById('r-cust-ratings').innerHTML = makeRatingTable(allCustomer);
+
+  // findings
+  const allData = [...allStaff,...allCustomer];
+  const topEffects = countField(allData,'top_effect');
+  const topEffect = Object.entries(topEffects).sort((a,b)=>b[1]-a[1])[0];
+  const hcYes = allStaff.filter(r=>r.homecare_useful==='非常に思う'||r.homecare_useful==='思う').length;
+  const hcPct = allStaff.length ? Math.round(hcYes/allStaff.length*100) : 0;
+  document.getElementById('r-findings').innerHTML = `
+    <ul style="padding-left:16px;line-height:2;">
+      <li>最も多く実感された効果：<strong>${topEffect?topEffect[0]:'—'}</strong>（${topEffect?topEffect[1]:0}件）</li>
+      <li>ホームケア活用に前向きなスタッフ：<strong>${hcPct}%</strong>（${hcYes}/${allStaff.length}名）</li>
+      <li>スタッフ総回答数：${allStaff.length}名、お客様総回答数：${allCustomer.length}名</li>
+    </ul>`;
+
+  const voices = allStaff.filter(r=>r.staff_appeal_words).slice(0,5);
+  document.getElementById('r-staff-voices').innerHTML = voices.length
+    ? voices.map(r=>`<p style="margin:6px 0;padding:8px 12px;border-left:3px solid var(--gold);background:var(--gray-light);">"${esc(r.staff_appeal_words)}"<span style="font-size:11px;color:var(--gray);margin-left:8px;">${r.staff_name||''} (${r.store_name||''})</span></p>`).join('')
+    : '<p style="color:var(--gray);">データがありません</p>';
+}
+
+function printReport() {
+  buildReport();
+  window.print();
+}
+
+// ===================== EXPORT =====================
+function exportCSV(type) {
+  const data = type === 'staff' ? allStaff : allCustomer;
+  if (!data.length) { alert('データがありません'); return; }
+  const keys = Object.keys(data[0]);
+  const rows = [keys.join(','), ...data.map(r => keys.map(k => {
+    const v = r[k];
+    if (Array.isArray(v)) return `"${v.join('/')}"`;
+    return v !== null && v !== undefined ? `"${String(v).replace(/"/g,'""')}"` : '';
+  }).join(','))];
+  download(rows.join('\n'), `storia_${type}_survey_${today()}.csv`, 'text/csv;charset=utf-8;');
+}
+function exportJSON(type) {
+  const data = type === 'staff' ? allStaff : allCustomer;
+  download(JSON.stringify(data, null, 2), `storia_${type}_survey_${today()}.json`, 'application/json');
+}
+function download(content, filename, mime) {
+  const bom = mime.includes('csv') ? '\uFEFF' : '';
+  const blob = new Blob([bom + content], { type: mime });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = filename; a.click();
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+
+// ===================== CHART HELPERS =====================
+const COLORS = ['#B8986A','#64B5F6','#81C784','#E57373','#CE93D8','#FFD54F','#4DB6AC','#FF8A65'];
+function countField(data, field) {
+  const c = {};
+  data.forEach(r => { if(r[field]) c[r[field]]=(c[r[field]]||0)+1; });
+  return c;
+}
+function destroyChart(id) { if(charts[id]) { charts[id].destroy(); delete charts[id]; } }
+function renderPieChart(id, counts, colors) {
+  destroyChart(id);
+  const labels = Object.keys(counts); const vals = Object.values(counts);
+  const ctx = document.getElementById(id); if(!ctx) return;
+  charts[id] = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors||COLORS }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } } } }
+  });
+}
+function renderBarChart(id, counts, color) {
+  destroyChart(id);
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const labels = sorted.map(e=>e[0]); const vals = sorted.map(e=>e[1]);
+  const ctx = document.getElementById(id); if(!ctx) return;
+  charts[id] = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: vals, backgroundColor: color, borderRadius: 4 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { stepSize: 1 } } } }
+  });
+}
+function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ===================== INIT =====================
+loadAll();
+</script>
+</body>
+</html>

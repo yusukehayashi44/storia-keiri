@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>うるおいミスト アンケート | Hair Beauty STORIA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --gold: #B8986A;
+    --gold-light: #D4B483;
+    --dark: #1A1A1A;
+    --gray: #666;
+    --gray-light: #F5F5F5;
+    --border: #E0D8CC;
+    --white: #FFFFFF;
+    --success: #4CAF50;
+    --font: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--gray-light); color: var(--dark); font-size: 14px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--dark) 0%, #2D2D2D 100%);
+    padding: 20px 24px;
+    text-align: center;
+    border-bottom: 2px solid var(--gold);
+  }
+  .header-logo { color: var(--gold); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; }
+  .header-title { color: var(--white); font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+  .header-subtitle { color: var(--gold-light); font-size: 12px; margin-top: 4px; }
+
+  /* タブCSS削除済み */
+
+  /* Form wrapper */
+  .form-container { max-width: 680px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  .section-card {
+    background: var(--white);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .section-head {
+    background: linear-gradient(90deg, var(--dark), #333);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-num {
+    width: 26px; height: 26px;
+    background: var(--gold);
+    color: var(--dark);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-label { color: var(--white); font-size: 14px; font-weight: 700; }
+  .section-body { padding: 16px; }
+
+  /* Checkbox grid */
+  .check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .check-grid.col3 { grid-template-columns: repeat(3, 1fr); }
+  .check-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .check-item:hover { border-color: var(--gold); background: rgba(184,152,106,0.05); }
+  .check-item input[type="checkbox"],
+  .check-item input[type="radio"] { accent-color: var(--gold); width: 16px; height: 16px; cursor: pointer; }
+  .check-item label { font-size: 13px; cursor: pointer; color: var(--dark); }
+
+  /* Rating */
+  .rating-table { width: 100%; border-collapse: collapse; }
+  .rating-table th, .rating-table td {
+    border: 1px solid var(--border);
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .rating-table th { background: var(--gray-light); font-weight: 700; }
+  .rating-table td:first-child { text-align: left; font-weight: 600; min-width: 120px; }
+  .rating-table input[type="radio"] { accent-color: var(--gold); width: 18px; height: 18px; }
+  .rating-scale { font-size: 11px; color: var(--gray); margin-bottom: 8px; padding: 6px 8px; background: var(--gray-light); border-radius: 4px; }
+
+  /* Text fields */
+  .text-field {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; font-family: var(--font);
+    resize: vertical; min-height: 60px;
+    transition: border-color 0.2s;
+  }
+  .text-field:focus { outline: none; border-color: var(--gold); }
+  input.text-field { min-height: unset; height: 40px; resize: none; }
+  select.text-field { height: 40px; resize: none; cursor: pointer; }
+
+  .field-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--dark); }
+  .field-hint { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+  /* Date + Name row */
+  .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+  /* Submit */
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--dark);
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font);
+    letter-spacing: 1px;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+  .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .submit-btn:disabled { background: #ccc; color: #888; cursor: not-allowed; transform: none; }
+
+  /* Notice */
+  .notice {
+    font-size: 12px; color: var(--gray); text-align: center;
+    padding: 12px; background: var(--gray-light);
+    border-radius: 6px; margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--dark); color: var(--white);
+    padding: 14px 24px; border-radius: 8px;
+    border-left: 4px solid var(--gold);
+    font-size: 14px; font-weight: 600;
+    transition: transform 0.4s ease;
+    z-index: 9999; white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: #e53935; }
+
+  /* Hidden panels */
+  .form-panel { display: none; }
+  .form-panel.active { display: block; }
+
+  /* Textarea group */
+  .textarea-group { display: flex; flex-direction: column; gap: 10px; }
+  .textarea-item { }
+  .textarea-item .field-label { font-size: 12px; color: var(--gold); }
+
+  /* Required */
+  .req { color: #e53935; margin-left: 3px; }
+
+  /* Store selector */
+  .store-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .store-chip {
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--white);
+  }
+  .store-chip.selected {
+    background: var(--gold);
+    color: var(--dark);
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+
+  @media (max-width: 480px) {
+    .check-grid { grid-template-columns: 1fr 1fr; }
+    .check-grid.col3 { grid-template-columns: repeat(2, 1fr); }
+    .meta-row { grid-template-columns: 1fr; }
+    .rating-table td { padding: 6px 4px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Hair Beauty STORIA Group</div>
+  <div class="header-title" id="header-title">うるおいミスト アンケート</div>
+  <div class="header-subtitle" id="header-subtitle">Oblix Mist — Product Verification Survey</div>
+</div>
+
+<!-- タブナビ削除済み：URLパラメータで自動切替 -->
+
+<!-- ===================== STAFF FORM ===================== -->
+<div id="panel-staff" class="form-panel active">
+<div class="form-container">
+
+  <div class="notice">スタッフの皆さんが実際に使用した体験をもとに、商品価値とお客様への提案力を高めるために活用します。正直なご意見をお聞かせください。</div>
+
+  <div class="meta-row">
+    <div>
+      <div class="field-label">記入日<span class="req">*</span></div>
+      <input type="date" class="text-field" id="s-date">
+    </div>
+    <div>
+      <div class="field-label">お名前<span class="req">*</span></div>
+      <input type="text" class="text-field" id="s-name" placeholder="例：山田 花子">
+    </div>
+  </div>
+
+  <!-- 店舗 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">店</div><div class="section-label">所属店舗</div></div>
+    <div class="section-body">
+      <div class="store-chips" id="s-store-chips">
+        <div class="store-chip" data-val="品川">品川</div>
+        <div class="store-chip" data-val="蒲田">蒲田</div>
+        <div class="store-chip" data-val="大井町">大井町</div>
+        <div class="store-chip" data-val="池上">池上</div>
+        <div class="store-chip" data-val="川崎">川崎</div>
+        <div class="store-chip" data-val="大森">大森</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q1 髪質 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">①</div><div class="section-label">ご自身の髪質（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="s-hair-types">
+        <div class="check-item"><input type="checkbox" value="細毛"><label>細毛</label></div>
+        <div class="check-item"><input type="checkbox" value="普通毛"><label>普通毛</label></div>
+        <div class="check-item"><input type="checkbox" value="硬毛"><label>硬毛</label></div>
+        <div class="check-item"><input type="checkbox" value="クセ毛"><label>クセ毛</label></div>
+        <div class="check-item"><input type="checkbox" value="エイジング毛"><label>エイジング毛</label></div>
+        <div class="check-item"><input type="checkbox" value="ブリーチ毛"><label>ブリーチ毛</label></div>
+        <div class="check-item"><input type="checkbox" value="縮毛矯正毛"><label>縮毛矯正毛</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q2 使用期間 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">②</div><div class="section-label">使用期間</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="s-period">
+        <div class="check-item"><input type="radio" name="s-period" value="初回使用"><label>初回使用</label></div>
+        <div class="check-item"><input type="radio" name="s-period" value="2〜3回使用"><label>2〜3回使用</label></div>
+        <div class="check-item"><input type="radio" name="s-period" value="1週間程度使用"><label>1週間程度</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q3 使用前の悩み -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">③</div><div class="section-label">使用前に気になっていたこと（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid" id="s-concerns">
+        <div class="check-item"><input type="checkbox" value="パサつき"><label>パサつき</label></div>
+        <div class="check-item"><input type="checkbox" value="広がり"><label>広がり</label></div>
+        <div class="check-item"><input type="checkbox" value="ツヤ不足"><label>ツヤ不足</label></div>
+        <div class="check-item"><input type="checkbox" value="毛先の引っかかり"><label>毛先の引っかかり</label></div>
+        <div class="check-item"><input type="checkbox" value="うねり"><label>うねり</label></div>
+        <div class="check-item"><input type="checkbox" value="ダメージ"><label>ダメージ</label></div>
+        <div class="check-item"><input type="checkbox" value="まとまりにくい"><label>まとまりにくい</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q4 評価 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">④</div><div class="section-label">使用感（5段階評価）</div></div>
+    <div class="section-body">
+      <div class="rating-scale">1＝非常に不満　2＝やや不満　3＝普通　4＝やや満足　5＝非常に満足</div>
+      <table class="rating-table" id="s-ratings">
+        <thead><tr><th>項目</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
+        <tbody>
+          <tr><td>香り</td><td><input type="radio" name="sr-scent" value="1"></td><td><input type="radio" name="sr-scent" value="2"></td><td><input type="radio" name="sr-scent" value="3"></td><td><input type="radio" name="sr-scent" value="4"></td><td><input type="radio" name="sr-scent" value="5"></td></tr>
+          <tr><td>なじみやすさ</td><td><input type="radio" name="sr-abs" value="1"></td><td><input type="radio" name="sr-abs" value="2"></td><td><input type="radio" name="sr-abs" value="3"></td><td><input type="radio" name="sr-abs" value="4"></td><td><input type="radio" name="sr-abs" value="5"></td></tr>
+          <tr><td>ベタつきの少なさ</td><td><input type="radio" name="sr-sticky" value="1"></td><td><input type="radio" name="sr-sticky" value="2"></td><td><input type="radio" name="sr-sticky" value="3"></td><td><input type="radio" name="sr-sticky" value="4"></td><td><input type="radio" name="sr-sticky" value="5"></td></tr>
+          <tr><td>使いやすさ</td><td><input type="radio" name="sr-ease" value="1"></td><td><input type="radio" name="sr-ease" value="2"></td><td><input type="radio" name="sr-ease" value="3"></td><td><input type="radio" name="sr-ease" value="4"></td><td><input type="radio" name="sr-ease" value="5"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Q5 変化 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑤</div><div class="section-label">使用後に変化を感じた項目（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid" id="s-changes">
+        <div class="check-item"><input type="checkbox" value="ツヤ"><label>ツヤ</label></div>
+        <div class="check-item"><input type="checkbox" value="指通り"><label>指通り</label></div>
+        <div class="check-item"><input type="checkbox" value="保湿感"><label>保湿感</label></div>
+        <div class="check-item"><input type="checkbox" value="まとまり"><label>まとまり</label></div>
+        <div class="check-item"><input type="checkbox" value="広がり軽減"><label>広がり軽減</label></div>
+        <div class="check-item"><input type="checkbox" value="毛先の収まり"><label>毛先の収まり</label></div>
+        <div class="check-item"><input type="checkbox" value="アイロン後の質感"><label>アイロン後の質感</label></div>
+        <div class="check-item"><input type="checkbox" value="熱ダメージ軽減"><label>熱ダメージ軽減</label></div>
+        <div class="check-item"><input type="checkbox" value="翌朝の扱いやすさ"><label>翌朝の扱いやすさ</label></div>
+        <div class="check-item"><input type="checkbox" value="特に感じなかった"><label>特に感じなかった</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q6 最も実感 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑥</div><div class="section-label">最も実感した効果</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="s-top-effect">
+        <div class="check-item"><input type="radio" name="s-top" value="ツヤ"><label>ツヤ</label></div>
+        <div class="check-item"><input type="radio" name="s-top" value="サラサラ感"><label>サラサラ感</label></div>
+        <div class="check-item"><input type="radio" name="s-top" value="まとまり"><label>まとまり</label></div>
+        <div class="check-item"><input type="radio" name="s-top" value="保湿感"><label>保湿感</label></div>
+        <div class="check-item"><input type="radio" name="s-top" value="指通り"><label>指通り</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q7 おすすめ客層 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑦</div><div class="section-label">どのようなお客様におすすめしたいか（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid" id="s-recommend">
+        <div class="check-item"><input type="checkbox" value="エイジング毛"><label>エイジング毛</label></div>
+        <div class="check-item"><input type="checkbox" value="パサつきが気になる方"><label>パサつきが気になる方</label></div>
+        <div class="check-item"><input type="checkbox" value="広がりやすい方"><label>広がりやすい方</label></div>
+        <div class="check-item"><input type="checkbox" value="ツヤが欲しい方"><label>ツヤが欲しい方</label></div>
+        <div class="check-item"><input type="checkbox" value="ブリーチ毛"><label>ブリーチ毛</label></div>
+        <div class="check-item"><input type="checkbox" value="アイロンをよく使用する方"><label>アイロンをよく使用する方</label></div>
+        <div class="check-item"><input type="checkbox" value="髪質改善カラー後"><label>髪質改善カラー後</label></div>
+        <div class="check-item"><input type="checkbox" value="髪質改善ストレート後"><label>髪質改善ストレート後</label></div>
+        <div class="check-item"><input type="checkbox" value="髪質改善トリートメント後"><label>髪質改善トリートメント後</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q8 ホームケア活用 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑧</div><div class="section-label">髪質改善メニュー後のホームケア提案として活用できると思いますか？</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="s-homecare">
+        <div class="check-item"><input type="radio" name="s-hc" value="非常に思う"><label>非常に思う</label></div>
+        <div class="check-item"><input type="radio" name="s-hc" value="思う"><label>思う</label></div>
+        <div class="check-item"><input type="radio" name="s-hc" value="普通"><label>普通</label></div>
+        <div class="check-item"><input type="radio" name="s-hc" value="あまり思わない"><label>あまり思わない</label></div>
+        <div class="check-item"><input type="radio" name="s-hc" value="思わない"><label>思わない</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q9-10 自由記入 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑨</div><div class="section-label">感想・自由記入</div></div>
+    <div class="section-body textarea-group">
+      <div class="textarea-item">
+        <div class="field-label">商品価値についてのご意見</div>
+        <textarea class="text-field" id="s-product-value" placeholder="商品価値についてご自由にお書きください"></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label" style="color:var(--success)">◆ 良かった点</div>
+        <textarea class="text-field" id="s-good" placeholder=""></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label" style="color:#e57373">◆ 改善点</div>
+        <textarea class="text-field" id="s-improve" placeholder=""></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label">◆ 気づいたこと</div>
+        <textarea class="text-field" id="s-noticed" placeholder=""></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ミーティング用 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">★</div><div class="section-label">ミーティング共有セクション（Zoom / 対面用）</div></div>
+    <div class="section-body textarea-group">
+      <div class="textarea-item">
+        <div class="field-label">① このミストを使って、一番お客様に伝えたい「自分の言葉」</div>
+        <textarea class="text-field" id="s-appeal-words" placeholder="お客様への言葉をご記入ください"></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label">② どのお客様に最初に提案してみたいですか？（施術名・髪の悩みなど具体的に）</div>
+        <textarea class="text-field" id="s-first-target" placeholder="例：髪質改善カラーをされた○○様…"></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label">③ イベント期間中、自分が一番意識して取り組みたいこと</div>
+        <textarea class="text-field" id="s-focus" placeholder=""></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label">④ 確認したいこと・不安なこと（何でもOK）</div>
+        <textarea class="text-field" id="s-questions" placeholder=""></textarea>
+      </div>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="s-submit" onclick="submitStaff()">✅ アンケートを送信する</button>
+</div>
+</div>
+
+<!-- ===================== CUSTOMER FORM ===================== -->
+<div id="panel-customer" class="form-panel">
+<div class="form-container">
+
+  <div class="notice">このアンケートは、より良い商品とサービスのご提案のために活用いたします。正直なご意見をお聞かせください。</div>
+
+  <div class="meta-row">
+    <div>
+      <div class="field-label">記入日<span class="req">*</span></div>
+      <input type="date" class="text-field" id="c-date">
+    </div>
+    <div>
+      <div class="field-label">年代</div>
+      <select class="text-field" id="c-age">
+        <option value="">選択してください</option>
+        <option>10代</option><option>20代</option><option>30代</option>
+        <option>40代</option><option>50代</option><option>60代以上</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 店舗 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">店</div><div class="section-label">ご利用の店舗</div></div>
+    <div class="section-body">
+      <div class="store-chips" id="c-store-chips">
+        <div class="store-chip" data-val="品川">品川</div>
+        <div class="store-chip" data-val="蒲田">蒲田</div>
+        <div class="store-chip" data-val="大井町">大井町</div>
+        <div class="store-chip" data-val="池上">池上</div>
+        <div class="store-chip" data-val="川崎">川崎</div>
+        <div class="store-chip" data-val="大森">大森</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 髪質改善経験 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">0</div><div class="section-label">髪質改善メニューのご経験</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="c-experience">
+        <div class="check-item"><input type="radio" name="c-exp" value="true"><label>ある</label></div>
+        <div class="check-item"><input type="radio" name="c-exp" value="false"><label>ない</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q1 髪質 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">①</div><div class="section-label">ご自身の髪質（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="c-hair-types">
+        <div class="check-item"><input type="checkbox" value="細毛"><label>細毛</label></div>
+        <div class="check-item"><input type="checkbox" value="普通毛"><label>普通毛</label></div>
+        <div class="check-item"><input type="checkbox" value="硬毛"><label>硬毛</label></div>
+        <div class="check-item"><input type="checkbox" value="クセ毛"><label>クセ毛</label></div>
+        <div class="check-item"><input type="checkbox" value="エイジング毛"><label>エイジング毛</label></div>
+        <div class="check-item"><input type="checkbox" value="ブリーチ毛"><label>ブリーチ毛</label></div>
+        <div class="check-item"><input type="checkbox" value="縮毛矯正毛"><label>縮毛矯正毛</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q2 使用期間 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">②</div><div class="section-label">使用期間</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="c-period">
+        <div class="check-item"><input type="radio" name="c-period" value="初回使用"><label>初回使用</label></div>
+        <div class="check-item"><input type="radio" name="c-period" value="2〜3回使用"><label>2〜3回使用</label></div>
+        <div class="check-item"><input type="radio" name="c-period" value="1週間程度使用"><label>1週間程度</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q3 使用前の悩み -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">③</div><div class="section-label">使用前に気になっていたこと（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid" id="c-concerns">
+        <div class="check-item"><input type="checkbox" value="パサつき"><label>パサつき</label></div>
+        <div class="check-item"><input type="checkbox" value="広がり"><label>広がり</label></div>
+        <div class="check-item"><input type="checkbox" value="ツヤ不足"><label>ツヤ不足</label></div>
+        <div class="check-item"><input type="checkbox" value="毛先の引っかかり"><label>毛先の引っかかり</label></div>
+        <div class="check-item"><input type="checkbox" value="うねり"><label>うねり</label></div>
+        <div class="check-item"><input type="checkbox" value="ダメージ"><label>ダメージ</label></div>
+        <div class="check-item"><input type="checkbox" value="まとまりにくい"><label>まとまりにくい</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q4 評価 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">④</div><div class="section-label">使用感（5段階評価）</div></div>
+    <div class="section-body">
+      <div class="rating-scale">1＝非常に不満　2＝やや不満　3＝普通　4＝やや満足　5＝非常に満足</div>
+      <table class="rating-table">
+        <thead><tr><th>項目</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
+        <tbody>
+          <tr><td>香り</td><td><input type="radio" name="cr-scent" value="1"></td><td><input type="radio" name="cr-scent" value="2"></td><td><input type="radio" name="cr-scent" value="3"></td><td><input type="radio" name="cr-scent" value="4"></td><td><input type="radio" name="cr-scent" value="5"></td></tr>
+          <tr><td>なじみやすさ</td><td><input type="radio" name="cr-abs" value="1"></td><td><input type="radio" name="cr-abs" value="2"></td><td><input type="radio" name="cr-abs" value="3"></td><td><input type="radio" name="cr-abs" value="4"></td><td><input type="radio" name="cr-abs" value="5"></td></tr>
+          <tr><td>ベタつきの少なさ</td><td><input type="radio" name="cr-sticky" value="1"></td><td><input type="radio" name="cr-sticky" value="2"></td><td><input type="radio" name="cr-sticky" value="3"></td><td><input type="radio" name="cr-sticky" value="4"></td><td><input type="radio" name="cr-sticky" value="5"></td></tr>
+          <tr><td>使いやすさ</td><td><input type="radio" name="cr-ease" value="1"></td><td><input type="radio" name="cr-ease" value="2"></td><td><input type="radio" name="cr-ease" value="3"></td><td><input type="radio" name="cr-ease" value="4"></td><td><input type="radio" name="cr-ease" value="5"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Q5 変化 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑤</div><div class="section-label">使用後に変化を感じた項目（複数回答可）</div></div>
+    <div class="section-body">
+      <div class="check-grid" id="c-changes">
+        <div class="check-item"><input type="checkbox" value="ツヤ"><label>ツヤ</label></div>
+        <div class="check-item"><input type="checkbox" value="指通り"><label>指通り</label></div>
+        <div class="check-item"><input type="checkbox" value="保湿感"><label>保湿感</label></div>
+        <div class="check-item"><input type="checkbox" value="まとまり"><label>まとまり</label></div>
+        <div class="check-item"><input type="checkbox" value="広がり軽減"><label>広がり軽減</label></div>
+        <div class="check-item"><input type="checkbox" value="毛先の収まり"><label>毛先の収まり</label></div>
+        <div class="check-item"><input type="checkbox" value="アイロン後の質感"><label>アイロン後の質感</label></div>
+        <div class="check-item"><input type="checkbox" value="熱ダメージ軽減"><label>熱ダメージ軽減</label></div>
+        <div class="check-item"><input type="checkbox" value="翌朝の扱いやすさ"><label>翌朝の扱いやすさ</label></div>
+        <div class="check-item"><input type="checkbox" value="特に感じなかった"><label>特に感じなかった</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q6 最も実感 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑥</div><div class="section-label">最も実感した効果</div></div>
+    <div class="section-body">
+      <div class="check-grid col3" id="c-top-effect">
+        <div class="check-item"><input type="radio" name="c-top" value="ツヤ"><label>ツヤ</label></div>
+        <div class="check-item"><input type="radio" name="c-top" value="サラサラ感"><label>サラサラ感</label></div>
+        <div class="check-item"><input type="radio" name="c-top" value="まとまり"><label>まとまり</label></div>
+        <div class="check-item"><input type="radio" name="c-top" value="保湿感"><label>保湿感</label></div>
+        <div class="check-item"><input type="radio" name="c-top" value="指通り"><label>指通り</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q7 自由記入 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑦</div><div class="section-label">良かった点・改善点・気づいたこと</div></div>
+    <div class="section-body textarea-group">
+      <div class="textarea-item">
+        <div class="field-label" style="color:var(--success)">◆ 良かった点</div>
+        <textarea class="text-field" id="c-good" placeholder=""></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label" style="color:#e57373">◆ 改善点</div>
+        <textarea class="text-field" id="c-improve" placeholder=""></textarea>
+      </div>
+      <div class="textarea-item">
+        <div class="field-label">◆ 気づいたこと</div>
+        <textarea class="text-field" id="c-noticed" placeholder=""></textarea>
+      </div>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="c-submit" onclick="submitCustomer()">✅ アンケートを送信する</button>
+  <p style="text-align:center;font-size:11px;color:var(--gray);margin-top:12px;">ご記入いただいた内容は商品改善・ホームケア提案向上に活用いたします。ご協力ありがとうございます。</p>
+</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== SUPABASE CONFIG =====================
+// ⚠️ 以下の値を実際のSupabaseプロジェクトの値に変更してください
+const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH'; // Supabase Dashboard > Project Settings > API から取得
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===================== TAB =====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='staff')||(i===1&&tab==='customer')));
+  document.getElementById('panel-staff').classList.toggle('active', tab==='staff');
+  document.getElementById('panel-customer').classList.toggle('active', tab==='customer');
+}
+
+// ===================== STORE CHIPS =====================
+document.querySelectorAll('.store-chips').forEach(container => {
+  container.querySelectorAll('.store-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      container.querySelectorAll('.store-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
+  });
+});
+
+// ===================== HELPERS =====================
+function getChecked(containerId) {
+  return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map(i => i.value);
+}
+function getRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+function getSelectedStore(chipsId) {
+  const el = document.querySelector(`#${chipsId} .store-chip.selected`);
+  return el ? el.dataset.val : null;
+}
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ===================== STAFF SUBMIT =====================
+async function submitStaff() {
+  const btn = document.getElementById('s-submit');
+  const name = document.getElementById('s-name').value.trim();
+  const date = document.getElementById('s-date').value;
+  if (!name || !date) { showToast('⚠ 記入日とお名前は必須です', 'error'); return; }
+  btn.disabled = true; btn.textContent = '送信中...';
+  const data = {
+    respondent_date: date,
+    staff_name: name,
+    store_name: getSelectedStore('s-store-chips'),
+    hair_types: getChecked('s-hair-types'),
+    usage_period: getRadio('s-period'),
+    concerns_before: getChecked('s-concerns'),
+    rating_scent: parseInt(getRadio('sr-scent')) || null,
+    rating_absorption: parseInt(getRadio('sr-abs')) || null,
+    rating_non_sticky: parseInt(getRadio('sr-sticky')) || null,
+    rating_ease_of_use: parseInt(getRadio('sr-ease')) || null,
+    changes_felt: getChecked('s-changes'),
+    top_effect: getRadio('s-top'),
+    recommended_customers: getChecked('s-recommend'),
+    homecare_useful: getRadio('s-hc'),
+    product_value_comment: document.getElementById('s-product-value').value,
+    good_points: document.getElementById('s-good').value,
+    improvement_points: document.getElementById('s-improve').value,
+    noticed_points: document.getElementById('s-noticed').value,
+    staff_appeal_words: document.getElementById('s-appeal-words').value,
+    first_target_customer: document.getElementById('s-first-target').value,
+    focus_during_event: document.getElementById('s-focus').value,
+    questions_or_concerns: document.getElementById('s-questions').value,
+  };
+  const { error } = await sb.from('staff_surveys').insert([data]);
+  btn.disabled = false; btn.textContent = '✅ アンケートを送信する';
+  if (error) { console.error(error); showToast('❌ 送信に失敗しました：' + error.message, 'error'); }
+  else { showToast('✅ スタッフアンケートを送信しました！ありがとうございます', 'success'); }
+}
+
+// ===================== CUSTOMER SUBMIT =====================
+async function submitCustomer() {
+  const btn = document.getElementById('c-submit');
+  const date = document.getElementById('c-date').value;
+  if (!date) { showToast('⚠ 記入日は必須です', 'error'); return; }
+  btn.disabled = true; btn.textContent = '送信中...';
+  const expVal = getRadio('c-exp');
+  const data = {
+    respondent_date: date,
+    age_group: document.getElementById('c-age').value || null,
+    store_name: getSelectedStore('c-store-chips'),
+    has_haircare_experience: expVal === 'true' ? true : expVal === 'false' ? false : null,
+    hair_types: getChecked('c-hair-types'),
+    usage_period: getRadio('c-period'),
+    concerns_before: getChecked('c-concerns'),
+    rating_scent: parseInt(getRadio('cr-scent')) || null,
+    rating_absorption: parseInt(getRadio('cr-abs')) || null,
+    rating_non_sticky: parseInt(getRadio('cr-sticky')) || null,
+    rating_ease_of_use: parseInt(getRadio('cr-ease')) || null,
+    changes_felt: getChecked('c-changes'),
+    top_effect: getRadio('c-top'),
+    good_points: document.getElementById('c-good').value,
+    improvement_points: document.getElementById('c-improve').value,
+    noticed_points: document.getElementById('c-noticed').value,
+  };
+  const { error } = await sb.from('customer_surveys').insert([data]);
+  btn.disabled = false; btn.textContent = '✅ アンケートを送信する';
+  if (error) { console.error(error); showToast('❌ 送信に失敗しました：' + error.message, 'error'); }
+  else { showToast('✅ アンケートを送信しました！ご協力ありがとうございます', 'success'); }
+}
+
+// 今日の日付をデフォルトセット
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('s-date').value = today;
+document.getElementById('c-date').value = today;
+
+// ===================== URLパラメータで自動切替 =====================
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get('type'); // 'staff' or 'customer'
+  if (type === 'staff') {
+    switchTab('staff');
+    document.getElementById('header-title').textContent = 'うるおいミスト スタッフ検証アンケート';
+    document.getElementById('header-subtitle').textContent = 'Staff Verification Survey — Hair Beauty STORIA';
+  } else if (type === 'customer') {
+    switchTab('customer');
+    document.getElementById('header-title').textContent = 'うるおいミスト お客様アンケート';
+    document.getElementById('header-subtitle').textContent = 'Customer Survey — Hair Beauty STORIA';
+  } else {
+    // パラメータなし → デフォルトはスタッフ表示
+    switchTab('staff');
+    document.getElementById('header-title').textContent = 'うるおいミスト スタッフ検証アンケート';
+    document.getElementById('header-subtitle').textContent = 'Staff Verification Survey — Hair Beauty STORIA';
+  }
+})();
+</script>
+</body>
+</html>
