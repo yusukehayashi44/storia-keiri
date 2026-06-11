@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>うるおいミスト アンケート | Hair Beauty STORIA</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.0/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --gold: #B8986A;
@@ -582,8 +582,7 @@
 const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH'; // Supabase Dashboard > Project Settings > API から取得
 
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===================== TAB =====================
 function switchTab(tab) {
