@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>テスト</title></head>
+<body>
+<h2 id="result">読み込み中...</h2>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+window.onload = function() {
+  try {
+    var sb = supabase.createClient(
+      'https://otilsmzwtkixbvwtdgaq.supabase.co',
+      'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH'
+    );
+    sb.from('staff_surveys').select('*').then(function(r) {
+      if (r.error) {
+        document.getElementById('result').textContent = 'エラー: ' + r.error.message;
+      } else {
+        document.getElementById('result').textContent = '成功！件数: ' + r.data.length + '件';
+      }
+    });
+  } catch(e) {
+    document.getElementById('result').textContent = '例外: ' + e.message;
+  }
+};
+</script>
+</body>
+</html>
