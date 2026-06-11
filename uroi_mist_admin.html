@@ -422,15 +422,11 @@
 // ===================== CONFIG =====================
 const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH';
-// supabaseライブラリの読み込み完了を待つ
-function initSupabase() {
-  if (typeof supabase === 'undefined' || typeof supabase.createClient === 'undefined') {
-    setTimeout(initSupabase, 100);
-    return;
-  }
+window.sb = null;
+document.addEventListener('DOMContentLoaded', function() {
   window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   loadAll();
-}
+});
 
 let allStaff = [], allCustomer = [];
 let charts = {};
@@ -821,7 +817,6 @@ function renderBarChart(id, counts, color) {
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ===================== INIT =====================
-initSupabase();
 </script>
 </body>
 </html>
