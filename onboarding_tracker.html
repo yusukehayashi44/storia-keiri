@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>入社後進捗管理 | Storia</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --brand: #C49A6C;
+    --brand-dark: #9B7145;
+    --brand-light: #F5EDE0;
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --border: #E8E0D5;
+    --text: #2C2420;
+    --text-muted: #8A7B70;
+    --danger: #D94F4F;
+    --danger-bg: #FFF0F0;
+    --warning: #E07B2A;
+    --warning-bg: #FFF6EE;
+    --success: #4A9B6F;
+    --success-bg: #F0FAF4;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ===== HEADER ===== */
+  .header { background: var(--text); padding: 0 20px; height: 54px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-logo { color: var(--brand); font-size: 16px; font-weight: 700; letter-spacing: 0.08em; }
+  .header-sub { color: #888; font-size: 11px; }
+
+  /* ===== TABS ===== */
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; position: sticky; top: 54px; z-index: 99; }
+  .tab-btn { flex: 0 0 auto; padding: 14px 20px; font-size: 13px; font-weight: 600; color: var(--text-muted); border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all .2s; }
+  .tab-btn.active { color: var(--brand-dark); border-bottom-color: var(--brand); }
+
+  /* ===== MAIN ===== */
+  .main { max-width: 900px; margin: 0 auto; padding: 20px 16px 80px; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ===== CARDS ===== */
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title-badge { background: var(--brand-light); color: var(--brand-dark); font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+
+  /* ===== FORM ===== */
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+  input[type=text], input[type=date], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: var(--bg); color: var(--text);
+    transition: border .2s;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); }
+  textarea { resize: vertical; min-height: 70px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+
+  /* ===== BUTTONS ===== */
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: var(--brand-dark); }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--brand); }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #f0d0d0; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ===== STAFF LIST ===== */
+  .staff-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-left: 4px solid var(--brand); transition: transform .15s; }
+  .staff-card:hover { transform: translateX(3px); }
+  .staff-name { font-size: 15px; font-weight: 700; }
+  .staff-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .staff-progress { display: flex; align-items: center; gap: 10px; }
+  .progress-ring { width: 50px; height: 50px; }
+  .progress-label { font-size: 18px; font-weight: 700; color: var(--brand-dark); }
+  .progress-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ===== CHECKLIST ===== */
+  .phase-header { background: var(--brand-light); border-radius: 8px; padding: 10px 14px; margin: 16px 0 8px; display: flex; align-items: center; justify-content: space-between; }
+  .phase-label { font-size: 13px; font-weight: 700; color: var(--brand-dark); }
+  .phase-progress { font-size: 12px; color: var(--text-muted); }
+
+  .check-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; transition: all .2s; }
+  .check-item.done { background: var(--success-bg); border-color: #c0e8d0; }
+  .check-item.overdue { background: var(--danger-bg); border-color: #f0c0c0; }
+  .check-item.warning { background: var(--warning-bg); border-color: #f0d0a0; }
+
+  .check-box { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; margin-top: 1px; }
+  .check-box.checked { background: var(--success); border-color: var(--success); }
+  .check-box.checked::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 700; }
+
+  .check-content { flex: 1; }
+  .check-title { font-size: 14px; font-weight: 600; }
+  .check-item.done .check-title { text-decoration: line-through; color: var(--text-muted); }
+  .check-meta { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; align-items: center; }
+  .check-due { font-size: 11px; color: var(--text-muted); }
+  .check-due.overdue { color: var(--danger); font-weight: 600; }
+  .check-due.warning { color: var(--warning); font-weight: 600; }
+  .check-by { font-size: 11px; background: var(--success-bg); color: var(--success); padding: 2px 7px; border-radius: 10px; }
+  .check-note-btn { font-size: 11px; color: var(--brand-dark); cursor: pointer; border: none; background: none; text-decoration: underline; }
+  .check-note { margin-top: 8px; padding: 8px 10px; background: #f8f5f0; border-radius: 6px; font-size: 12px; color: var(--text-muted); }
+
+  .date-input-row { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+  .date-input-row input[type=date] { padding: 5px 8px; font-size: 12px; }
+  .date-input-row .btn { padding: 5px 10px; font-size: 11px; }
+
+  /* ===== WHO CHECK MODAL ===== */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 14px; padding: 24px; width: 90%; max-width: 380px; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .name-btn { padding: 12px; text-align: center; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); transition: all .2s; }
+  .name-btn:hover { border-color: var(--brand); background: var(--brand-light); }
+
+  /* ===== ALERTS ===== */
+  .alert-badge { background: var(--danger); color: #fff; border-radius: 20px; font-size: 11px; padding: 2px 7px; margin-left: 6px; }
+  .alert-list { }
+  .alert-item { padding: 12px 14px; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .alert-item.overdue { background: var(--danger-bg); border-left: 3px solid var(--danger); }
+  .alert-item.warning { background: var(--warning-bg); border-left: 3px solid var(--warning); }
+  .alert-icon { font-size: 18px; }
+  .alert-text { flex: 1; }
+  .alert-text strong { display: block; font-size: 13px; }
+  .alert-text span { font-size: 11px; color: var(--text-muted); }
+
+  /* ===== REPORT ===== */
+  .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .report-table th { background: var(--brand-light); padding: 8px 12px; text-align: left; font-size: 12px; color: var(--brand-dark); }
+  .report-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .report-table tr:hover td { background: #faf7f3; }
+
+  /* ===== ADMIN ===== */
+  .item-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .item-row:last-child { border-bottom: none; }
+
+  /* ===== LOADING ===== */
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+
+  /* ===== TOAST ===== */
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  .tag { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+  .tag-edu { background: #EEF2FF; color: #4F46E5; }
+  .tag-text { background: #FEF3C7; color: #92400E; }
+
+  .back-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; margin-bottom: 16px; border: none; background: none; padding: 0; }
+  .back-btn:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="header-logo">Storia</div>
+    <div class="header-sub">入社後進捗管理システム</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('dashboard')">📋 進捗一覧</button>
+  <button class="tab-btn" onclick="switchTab('alerts')" id="tab-alerts">⚠️ アラート</button>
+  <button class="tab-btn" onclick="switchTab('report')">📊 レポート</button>
+  <button class="tab-btn" onclick="switchTab('admin')">⚙️ 管理</button>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="section active" id="sec-dashboard">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div style="font-size:17px; font-weight:700;">スタッフ一覧</div>
+      <button class="btn btn-primary btn-sm" onclick="openAddStaff()">＋ スタッフ追加</button>
+    </div>
+    <div id="staff-list"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+  </div>
+
+  <!-- ===== CHECKLIST VIEW ===== -->
+  <div class="section" id="sec-checklist">
+    <button class="back-btn" onclick="backToDashboard()">← 一覧に戻る</button>
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;" id="cl-name">-</div>
+          <div style="font-size:12px; color:var(--text-muted);" id="cl-meta">-</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="progress-label" id="cl-pct">0%</div>
+          <div class="progress-sub">完了率</div>
+        </div>
+      </div>
+    </div>
+    <div id="checklist-content"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+  </div>
+
+  <!-- ===== ALERTS ===== -->
+  <div class="section" id="sec-alerts">
+    <div class="card-title" style="margin-bottom:16px;">⚠️ アラート一覧</div>
+    <div id="alert-list"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+  </div>
+
+  <!-- ===== REPORT ===== -->
+  <div class="section" id="sec-report">
+    <div class="card">
+      <div class="card-title">📊 レポート出力</div>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group">
+          <label>スタッフ</label>
+          <select id="rpt-staff"><option value="">全員</option></select>
+        </div>
+        <div class="form-group">
+          <label>フェーズ</label>
+          <select id="rpt-phase">
+            <option value="">全フェーズ</option>
+            <option value="1">入社〜2週間</option>
+            <option value="2">入社〜1ヶ月</option>
+            <option value="3">〜2ヶ月</option>
+            <option value="4">〜3ヶ月</option>
+            <option value="5">アカデミー〜8ヶ月</option>
+            <option value="6">教育部連携</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="loadReport()">レポート表示</button>
+    </div>
+    <div id="report-content" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- ===== ADMIN ===== -->
+  <div class="section" id="sec-admin">
+    <div class="card">
+      <div class="card-title">👥 担当者名リスト <span class="card-title-badge">確認用</span></div>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">チェック時に選択できる担当者名を管理します</div>
+      <div id="checker-list"></div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <input type="text" id="new-checker" placeholder="担当者名を入力" style="flex:1;">
+        <button class="btn btn-primary btn-sm" onclick="addChecker()">追加</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 チェック項目管理 <span class="card-title-badge">追加可</span></div>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">フェーズを選んで項目を追加できます</div>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group">
+          <label>フェーズ</label>
+          <select id="new-item-phase">
+            <option value="1">入社〜2週間</option>
+            <option value="2">入社〜1ヶ月</option>
+            <option value="3">〜2ヶ月</option>
+            <option value="4">〜3ヶ月</option>
+            <option value="5">アカデミー〜8ヶ月</option>
+            <option value="6">教育部連携</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>種別</label>
+          <select id="new-item-type">
+            <option value="check">チェック（完了確認）</option>
+            <option value="text">記述式（コメント入力）</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>項目名</label>
+        <input type="text" id="new-item-name" placeholder="例：電話対応ができる">
+      </div>
+      <div class="form-group">
+        <label>カテゴリタグ（任意）</label>
+        <select id="new-item-cat">
+          <option value="">なし</option>
+          <option value="edu">教育部連携</option>
+          <option value="ops">業務オペレーション</option>
+          <option value="hr">人事・提出物</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="addCheckItem()">項目を追加</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ===== WHO CHECK MODAL ===== -->
+<div class="modal-overlay" id="modal-who">
+  <div class="modal">
+    <div class="modal-title">✅ 確認者を選んでください</div>
+    <div class="name-grid" id="checker-grid"></div>
+    <button class="btn btn-secondary" style="width:100%;" onclick="closeModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- ===== ADD STAFF MODAL ===== -->
+<div class="modal-overlay" id="modal-staff">
+  <div class="modal">
+    <div class="modal-title">＋ スタッフ追加</div>
+    <div class="form-group">
+      <label>スタッフ名 *</label>
+      <input type="text" id="ns-name" placeholder="例：田中 花子">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>店舗 *</label>
+        <select id="ns-store">
+          <option value="品川">品川</option>
+          <option value="蒲田">蒲田</option>
+          <option value="大井町">大井町</option>
+          <option value="池上">池上</option>
+          <option value="川崎">川崎</option>
+          <option value="大森">大森</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>役職</label>
+        <select id="ns-role">
+          <option value="アシスタント">アシスタント</option>
+          <option value="スタイリスト">スタイリスト</option>
+          <option value="JRスタイリスト">JRスタイリスト</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>入社日 *</label>
+      <input type="date" id="ns-date">
+    </div>
+    <div class="form-group">
+      <label>備考</label>
+      <input type="text" id="ns-note" placeholder="例：前職でカラーモデル経験あり">
+    </div>
+    <div style="display:flex; gap:8px; margin-top:4px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="saveStaff()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== SUPABASE CONFIG =====
+const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===== STATE =====
+let currentStaffId = null;
+let pendingCheckId = null;
+let checkersCache = [];
+let checkItemsCache = [];
+let staffCache = [];
+let progressCache = {};
+
+// ===== INIT =====
+async function init() {
+  await loadCheckers();
+  await loadCheckItems();
+  await loadStaffList();
+  await loadAlerts();
+  populateReportStaffSelect();
+  updateAlertBadge();
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'alerts') loadAlerts();
+  if (tab === 'report') populateReportStaffSelect();
+}
+
+function backToDashboard() {
+  document.getElementById('sec-checklist').classList.remove('active');
+  document.getElementById('sec-dashboard').classList.add('active');
+}
+
+// ===== CHECKERS =====
+async function loadCheckers() {
+  const { data } = await sb.from('ob_checkers').select('*').order('name');
+  checkersCache = data || [];
+  renderCheckerList();
+  renderCheckerGrid();
+}
+
+function renderCheckerList() {
+  const el = document.getElementById('checker-list');
+  if (!checkersCache.length) { el.innerHTML = '<div class="empty">担当者が登録されていません</div>'; return; }
+  el.innerHTML = checkersCache.map(c => `
+    <div class="item-row">
+      <span style="flex:1;">${c.name}</span>
+    </div>
+  `).join('');
+}
+
+function renderCheckerGrid() {
+  document.getElementById('checker-grid').innerHTML = checkersCache.map(c =>
+    `<div class="name-btn" onclick="confirmCheck('${c.name}')">${c.name}</div>`
+  ).join('') + `<div class="name-btn" style="grid-column:1/-1;" onclick="customChecker()">その他（入力）</div>`;
+}
+
+async function addChecker() {
+  const name = document.getElementById('new-checker').value.trim();
+  if (!name) return;
+  await sb.from('ob_checkers').insert({ name });
+  document.getElementById('new-checker').value = '';
+  await loadCheckers();
+  showToast(`${name} を追加しました`);
+}
+
+// ===== CHECK ITEMS =====
+async function loadCheckItems() {
+  const { data } = await sb.from('ob_check_items').select('*').order('phase').order('sort_order');
+  checkItemsCache = data || [];
+}
+
+async function addCheckItem() {
+  const name = document.getElementById('new-item-name').value.trim();
+  const phase = parseInt(document.getElementById('new-item-phase').value);
+  const type = document.getElementById('new-item-type').value;
+  const cat = document.getElementById('new-item-cat').value;
+  if (!name) return alert('項目名を入力してください');
+  const maxOrder = Math.max(0, ...checkItemsCache.filter(i => i.phase === phase).map(i => i.sort_order || 0));
+  await sb.from('ob_check_items').insert({ name, phase, type, category: cat || null, sort_order: maxOrder + 1, is_active: true });
+  document.getElementById('new-item-name').value = '';
+  await loadCheckItems();
+  showToast('項目を追加しました');
+}
+
+// ===== STAFF =====
+async function loadStaffList() {
+  const { data: staffs } = await sb.from('ob_staff').select('*').order('join_date', { ascending: false });
+  staffCache = staffs || [];
+  const { data: progress } = await sb.from('ob_progress').select('staff_id, is_done');
+  progressCache = {};
+  if (progress) {
+    progress.forEach(p => {
+      if (!progressCache[p.staff_id]) progressCache[p.staff_id] = { total: 0, done: 0 };
+      progressCache[p.staff_id].total++;
+      if (p.is_done) progressCache[p.staff_id].done++;
+    });
+  }
+  renderStaffList();
+}
+
+function renderStaffList() {
+  const el = document.getElementById('staff-list');
+  if (!staffCache.length) {
+    el.innerHTML = '<div class="empty">スタッフが登録されていません<br><br><button class="btn btn-primary" onclick="openAddStaff()">＋ 最初のスタッフを追加</button></div>';
+    return;
+  }
+  el.innerHTML = staffCache.map(s => {
+    const prog = progressCache[s.id] || { total: checkItemsCache.length || 1, done: 0 };
+    const total = Math.max(prog.total, 1);
+    const pct = Math.round((prog.done / total) * 100);
+    const joinDate = s.join_date ? new Date(s.join_date).toLocaleDateString('ja-JP') : '-';
+    return `
+      <div class="staff-card" onclick="openChecklist(${s.id})">
+        <div>
+          <div class="staff-name">${s.name}</div>
+          <div class="staff-meta">${s.store} ／ ${s.role} ／ 入社 ${joinDate}</div>
+          ${s.note ? `<div class="staff-meta" style="margin-top:2px;">📝 ${s.note}</div>` : ''}
+        </div>
+        <div class="staff-progress">
+          <div>
+            <div class="progress-label">${pct}%</div>
+            <div class="progress-sub">${prog.done}/${total} 完了</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAddStaff() {
+  document.getElementById('ns-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-staff').classList.add('open');
+}
+
+async function saveStaff() {
+  const name = document.getElementById('ns-name').value.trim();
+  const store = document.getElementById('ns-store').value;
+  const role = document.getElementById('ns-role').value;
+  const join_date = document.getElementById('ns-date').value;
+  const note = document.getElementById('ns-note').value.trim();
+  if (!name || !join_date) return alert('スタッフ名と入社日は必須です');
+  const { data, error } = await sb.from('ob_staff').insert({ name, store, role, join_date, note: note || null }).select().single();
+  if (error) { alert('エラー: ' + error.message); return; }
+  // 全チェック項目の進捗レコードを自動作成
+  const items = checkItemsCache.filter(i => i.is_active);
+  if (items.length) {
+    const inserts = items.map(item => ({
+      staff_id: data.id, item_id: item.id,
+      is_done: false, due_date: calcDueDate(join_date, item.phase)
+    }));
+    await sb.from('ob_progress').insert(inserts);
+  }
+  closeModal();
+  await loadStaffList();
+  showToast(`${name} を追加しました`);
+}
+
+function calcDueDate(joinDate, phase) {
+  const d = new Date(joinDate);
+  const days = [0, 14, 30, 60, 90, 240, 90][phase] || 30;
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// ===== CHECKLIST =====
+const PHASE_LABELS = ['', '入社〜2週間', '入社〜1ヶ月', '〜2ヶ月', '〜3ヶ月', 'アカデミー〜8ヶ月', '教育部連携'];
+
+async function openChecklist(staffId) {
+  currentStaffId = staffId;
+  const staff = staffCache.find(s => s.id === staffId);
+  document.getElementById('cl-name').textContent = staff.name;
+  document.getElementById('cl-meta').textContent = `${staff.store} ／ ${staff.role} ／ 入社 ${staff.join_date ? new Date(staff.join_date).toLocaleDateString('ja-JP') : '-'}`;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-checklist').classList.add('active');
+  await renderChecklist(staffId);
+}
+
+async function renderChecklist(staffId) {
+  const el = document.getElementById('checklist-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+  const { data: progress } = await sb.from('ob_progress')
+    .select('*, ob_check_items(*)')
+    .eq('staff_id', staffId)
+    .order('item_id');
+  if (!progress) { el.innerHTML = '<div class="empty">データなし</div>'; return; }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const week = new Date(today); week.setDate(week.getDate() + 7);
+
+  let totalDone = 0;
+  const byPhase = {};
+  progress.forEach(p => {
+    const item = p.ob_check_items;
+    if (!item) return;
+    const ph = item.phase;
+    if (!byPhase[ph]) byPhase[ph] = [];
+    byPhase[ph].push(p);
+    if (p.is_done) totalDone++;
+  });
+  const total = progress.length;
+  document.getElementById('cl-pct').textContent = total ? Math.round(totalDone/total*100)+'%' : '0%';
+
+  let html = '';
+  [1,2,3,4,5,6].forEach(ph => {
+    const items = byPhase[ph] || [];
+    if (!items.length) return;
+    const done = items.filter(i => i.is_done).length;
+    html += `<div class="phase-header"><span class="phase-label">📌 ${PHASE_LABELS[ph]}</span><span class="phase-progress">${done}/${items.length}</span></div>`;
+    items.forEach(p => {
+      const item = p.ob_check_items;
+      const dueDate = p.due_date ? new Date(p.due_date) : null;
+      dueDate && dueDate.setHours(0,0,0,0);
+      let dueClass = '', dueLabel = '';
+      if (dueDate && !p.is_done) {
+        if (dueDate < today) { dueClass = 'overdue'; dueLabel = '⚠️ 期限超過'; }
+        else if (dueDate <= week) { dueClass = 'warning'; dueLabel = '⏰ 期限間近'; }
+      }
+      const catTag = item.category === 'edu' ? '<span class="tag tag-edu">教育部</span>' : item.category === 'hr' ? '<span class="tag tag-text">人事</span>' : '';
+      const typeTag = item.type === 'text' ? '<span class="tag tag-text">記述式</span>' : '';
+      html += `
+        <div class="check-item ${p.is_done ? 'done' : dueClass}" id="ci-${p.id}">
+          <div class="check-box ${p.is_done ? 'checked' : ''}" onclick="toggleCheck(${p.id}, ${p.is_done ? 'true' : 'false'})"></div>
+          <div class="check-content">
+            <div class="check-title">${item.name}${catTag}${typeTag}</div>
+            <div class="check-meta">
+              ${dueDate ? `<span class="check-due ${dueClass}">${dueClass ? dueLabel + ' (' + dueDate.toLocaleDateString('ja-JP') + ')' : '期日: ' + dueDate.toLocaleDateString('ja-JP')}</span>` : ''}
+              ${p.is_done && p.checked_by ? `<span class="check-by">✓ ${p.checked_by}</span>` : ''}
+              ${p.is_done && p.checked_at ? `<span class="check-due">${new Date(p.checked_at).toLocaleDateString('ja-JP')}</span>` : ''}
+              <button class="check-note-btn" onclick="toggleNote(${p.id})">📝 メモ</button>
+              <button class="check-note-btn" onclick="toggleDateEdit(${p.id})">📅 期日変更</button>
+            </div>
+            <div id="note-${p.id}" style="display:none;">
+              <textarea placeholder="メモ・コメントを入力..." style="margin-top:8px; font-size:13px;" onchange="saveNote(${p.id}, this.value)">${p.note_text || ''}</textarea>
+            </div>
+            <div id="date-${p.id}" style="display:none;">
+              <div class="date-input-row">
+                <input type="date" value="${p.due_date || ''}" id="dateinput-${p.id}">
+                <button class="btn btn-primary btn-sm" onclick="saveDueDate(${p.id})">保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function toggleNote(pid) {
+  const el = document.getElementById('note-' + pid);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function toggleDateEdit(pid) {
+  const el = document.getElementById('date-' + pid);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+async function saveNote(pid, text) {
+  await sb.from('ob_progress').update({ note_text: text }).eq('id', pid);
+  showToast('メモを保存しました');
+}
+async function saveDueDate(pid) {
+  const val = document.getElementById('dateinput-' + pid).value;
+  await sb.from('ob_progress').update({ due_date: val || null }).eq('id', pid);
+  toggleDateEdit(pid);
+  showToast('期日を更新しました');
+  renderChecklist(currentStaffId);
+}
+
+// ===== CHECK / UNCHECK =====
+function toggleCheck(progressId, isDone) {
+  pendingCheckId = progressId;
+  if (isDone) {
+    uncheck(progressId);
+  } else {
+    document.getElementById('modal-who').classList.add('open');
+  }
+}
+
+function confirmCheck(checkerName) {
+  closeModal();
+  doCheck(pendingCheckId, checkerName);
+}
+
+function customChecker() {
+  const name = prompt('確認者名を入力してください：');
+  if (name) { closeModal(); doCheck(pendingCheckId, name); }
+}
+
+async function doCheck(progressId, checkerName) {
+  await sb.from('ob_progress').update({
+    is_done: true, checked_by: checkerName, checked_at: new Date().toISOString()
+  }).eq('id', progressId);
+  showToast(`✅ ${checkerName} が確認しました`);
+  renderChecklist(currentStaffId);
+  await loadStaffList();
+  updateAlertBadge();
+}
+
+async function uncheck(progressId) {
+  if (!confirm('チェックを外しますか？')) return;
+  await sb.from('ob_progress').update({ is_done: false, checked_by: null, checked_at: null }).eq('id', progressId);
+  showToast('チェックを外しました');
+  renderChecklist(currentStaffId);
+  await loadStaffList();
+}
+
+// ===== ALERTS =====
+async function loadAlerts() {
+  const el = document.getElementById('alert-list');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const week = new Date(today); week.setDate(week.getDate() + 7);
+  const todayStr = today.toISOString().split('T')[0];
+  const weekStr = week.toISOString().split('T')[0];
+
+  const { data } = await sb.from('ob_progress')
+    .select('*, ob_staff(name, store), ob_check_items(name, phase)')
+    .eq('is_done', false)
+    .lte('due_date', weekStr)
+    .not('due_date', 'is', null)
+    .order('due_date');
+
+  if (!data || !data.length) {
+    el.innerHTML = '<div class="empty">✅ アラートはありません</div>';
+    return;
+  }
+  el.innerHTML = data.map(p => {
+    const dueDate = new Date(p.due_date);
+    const isOverdue = dueDate < today;
+    const staff = p.ob_staff;
+    const item = p.ob_check_items;
+    return `
+      <div class="alert-item ${isOverdue ? 'overdue' : 'warning'}">
+        <div class="alert-icon">${isOverdue ? '🔴' : '🟡'}</div>
+        <div class="alert-text">
+          <strong>${staff?.name} ／ ${item?.name}</strong>
+          <span>${staff?.store} ／ ${PHASE_LABELS[item?.phase]} ／ 期日: ${dueDate.toLocaleDateString('ja-JP')}${isOverdue ? ' ⚠️ 超過' : ''}</span>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="openChecklist(${p.staff_id})">確認</button>
+      </div>
+    `;
+  }).join('');
+}
+
+async function updateAlertBadge() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const week = new Date(today); week.setDate(week.getDate() + 7);
+  const weekStr = week.toISOString().split('T')[0];
+  const { count } = await sb.from('ob_progress')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_done', false)
+    .lte('due_date', weekStr)
+    .not('due_date', 'is', null);
+  const badge = document.getElementById('tab-alerts');
+  const existing = badge.querySelector('.alert-badge');
+  if (existing) existing.remove();
+  if (count > 0) badge.innerHTML += `<span class="alert-badge">${count}</span>`;
+}
+
+// ===== REPORT =====
+function populateReportStaffSelect() {
+  const sel = document.getElementById('rpt-staff');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">全員</option>' + staffCache.map(s => `<option value="${s.id}">${s.name}（${s.store}）</option>`).join('');
+  sel.value = current;
+}
+
+async function loadReport() {
+  const el = document.getElementById('report-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>生成中...</div>';
+  const staffId = document.getElementById('rpt-staff').value;
+  const phase = document.getElementById('rpt-phase').value;
+
+  let query = sb.from('ob_progress').select('*, ob_staff(name, store, join_date, role), ob_check_items(name, phase, type)');
+  if (staffId) query = query.eq('staff_id', staffId);
+  if (phase) query = query.eq('ob_check_items.phase', parseInt(phase));
+  const { data } = await query.order('staff_id').order('item_id');
+  if (!data || !data.length) { el.innerHTML = '<div class="empty">データなし</div>'; return; }
+
+  const today = new Date();
+  const rows = data.filter(p => p.ob_check_items);
+  const doneCount = rows.filter(r => r.is_done).length;
+  const overdueCount = rows.filter(r => !r.is_done && r.due_date && new Date(r.due_date) < today).length;
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex; gap:20px; flex-wrap:wrap;">
+        <div><div style="font-size:22px; font-weight:700; color:var(--brand-dark);">${rows.length}</div><div style="font-size:11px; color:var(--text-muted);">総項目数</div></div>
+        <div><div style="font-size:22px; font-weight:700; color:var(--success);">${doneCount}</div><div style="font-size:11px; color:var(--text-muted);">完了</div></div>
+        <div><div style="font-size:22px; font-weight:700; color:var(--danger);">${overdueCount}</div><div style="font-size:11px; color:var(--text-muted);">期限超過</div></div>
+        <div><div style="font-size:22px; font-weight:700; color:var(--brand);">${rows.length ? Math.round(doneCount/rows.length*100) : 0}%</div><div style="font-size:11px; color:var(--text-muted);">完了率</div></div>
+      </div>
+    </div>
+    <div class="card" style="overflow-x:auto;">
+      <table class="report-table">
+        <thead><tr><th>スタッフ</th><th>フェーズ</th><th>項目</th><th>期日</th><th>状態</th><th>確認者</th></tr></thead>
+        <tbody>
+          ${rows.map(r => {
+            const item = r.ob_check_items;
+            const staff = r.ob_staff;
+            const dueDate = r.due_date ? new Date(r.due_date) : null;
+            const isOverdue = dueDate && !r.is_done && dueDate < today;
+            return `<tr>
+              <td>${staff?.name}<br><span style="font-size:11px;color:var(--text-muted)">${staff?.store}</span></td>
+              <td style="font-size:12px;">${PHASE_LABELS[item?.phase]}</td>
+              <td>${item?.name}</td>
+              <td style="font-size:12px; ${isOverdue ? 'color:var(--danger);font-weight:600;' : ''}">${dueDate ? dueDate.toLocaleDateString('ja-JP') : '-'}${isOverdue ? ' ⚠️' : ''}</td>
+              <td>${r.is_done ? '<span style="color:var(--success);font-weight:600;">✓ 完了</span>' : '<span style="color:var(--text-muted);">未完了</span>'}</td>
+              <td style="font-size:12px;">${r.checked_by || '-'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ===== MODAL =====
+function closeModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ===== BOOT =====
+init();
+</script>
+</body>
+</html>
