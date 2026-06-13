@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Storia Quest</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --gold:#C49A6C;--gold-dark:#9B7145;--gold-light:#F5EDE0;--gold-glow:rgba(196,154,108,0.3);
+  --bg:#0F0E0C;--bg2:#1A1815;--bg3:#242220;--surface:#2A2825;--border:#3A3835;
+  --text:#F0EAE0;--muted:#8A8070;--green:#4ABA7A;--green-bg:rgba(74,186,122,0.12);
+  --red:#E05555;--orange:#E07B2A;--blue:#5A9BD4;--purple:#9B7AE0;
+  --r:12px;
+  --vh:100dvh;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+
+/* ===== LAYOUT: full-height screens, no scroll on outer ===== */
+.screen{display:none;height:100dvh;flex-direction:column;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* scrollable inner area */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.scroll-area::-webkit-scrollbar{display:none;}
+
+/* ===== TOP BAR ===== */
+.top-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.back-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:2px 6px;line-height:1;}
+.top-title{font-size:15px;font-weight:700;flex:1;}
+.top-action{background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;padding:5px 10px;border-radius:20px;cursor:pointer;}
+
+/* ===== PASSCODE SCREEN ===== */
+#scr-passcode{background:linear-gradient(160deg,#1A1510,var(--bg));justify-content:center;align-items:center;}
+.logo{text-align:center;margin-bottom:32px;}
+.logo-title{font-size:26px;font-weight:800;letter-spacing:.15em;color:var(--gold);text-shadow:0 0 30px var(--gold-glow);}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.1em;}
+.mode-wrap{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px;padding:0 20px;}
+.mode-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .18s;width:100%;}
+.mode-btn:active{transform:scale(0.98);border-color:var(--gold);}
+.mode-icon{font-size:28px;flex-shrink:0;}
+.mode-info strong{display:block;font-size:14px;color:var(--text);}
+.mode-info span{font-size:11px;color:var(--muted);}
+
+/* passcode entry */
+.pin-wrap{width:100%;max-width:280px;padding:0 20px;margin-top:10px;}
+.pin-label{font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:16px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all .15s;}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold);}
+.pin-dot.error{background:var(--red);border-color:var(--red);}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.pin-key{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:20px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;color:var(--text);}
+.pin-key:active{background:var(--gold);color:#fff;transform:scale(0.93);}
+.pin-back{font-size:16px;}
+.back-to-mode{margin-top:14px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;width:100%;text-align:center;}
+
+/* ===== STAFF SELECT ===== */
+#scr-staff-select .scroll-area{padding:16px;}
+.staff-btn{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;transition:all .18s;color:var(--text);}
+.staff-btn:active{border-color:var(--gold);transform:scale(0.99);}
+.s-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex-shrink:0;}
+.s-info strong{display:block;font-size:14px;}
+.s-info span{font-size:11px;color:var(--muted);}
+.s-score{margin-left:auto;text-align:right;flex-shrink:0;}
+.s-score .pts{font-size:17px;font-weight:800;color:var(--gold);}
+.s-score .lv{font-size:10px;color:var(--muted);}
+.level-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-top:3px;}
+
+/* ===== PHASE SELECT (PYRAMID) ===== */
+#scr-phase{flex-direction:column;}
+.phase-hero{background:var(--bg2);padding:16px;flex-shrink:0;}
+.hero-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.hero-avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;}
+.hero-name{font-size:16px;font-weight:700;}
+.hero-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.hero-score-wrap{margin-left:auto;text-align:right;}
+.hero-pts{font-size:26px;font-weight:800;color:var(--gold);text-shadow:0 0 16px var(--gold-glow);line-height:1;}
+.hero-pts-label{font-size:10px;color:var(--muted);}
+.level-display{text-align:center;margin-bottom:12px;}
+.level-name{font-size:18px;font-weight:800;color:var(--gold);}
+.level-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.level-bar-wrap{margin-bottom:4px;}
+.level-bar-track{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.level-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));transition:width .6s ease;}
+.level-bar-label{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* pyramid phase selector */
+.pyramid-select{padding:16px;}
+.pyramid-title{font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px;letter-spacing:.05em;}
+.phase-cards{display:flex;flex-direction:column;gap:8px;}
+.phase-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .18s;}
+.phase-card:active{border-color:var(--gold);transform:scale(0.99);}
+.phase-card.all-done{border-color:var(--green);background:var(--green-bg);}
+.phase-num{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.phase-info{flex:1;}
+.phase-info strong{font-size:13px;display:block;}
+.phase-info span{font-size:11px;color:var(--muted);}
+.phase-prog{text-align:right;flex-shrink:0;}
+.phase-prog .frac{font-size:13px;font-weight:700;}
+.phase-prog .done-icon{font-size:18px;}
+.mini-bar{height:4px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden;}
+.mini-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));}
+
+/* ===== QUEST LIST ===== */
+#scr-quest .scroll-area{padding:12px 14px 20px;}
+.quest-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px;transition:all .2s;}
+.quest-item.done{border-color:var(--green);background:var(--green-bg);}
+.quest-item.pending{border-color:var(--orange);background:rgba(224,123,42,0.06);}
+.quest-item.rejected{border-color:var(--red);background:rgba(224,85,85,0.06);}
+.qi-top{display:flex;gap:10px;align-items:flex-start;}
+.qi-icon{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:1px;}
+.qi-icon.done{background:var(--green);border-color:var(--green);}
+.qi-icon.pending{background:var(--orange);border-color:var(--orange);}
+.qi-icon.rejected{background:var(--red);border-color:var(--red);}
+.qi-body{flex:1;}
+.qi-name{font-size:13px;font-weight:600;line-height:1.4;}
+.quest-item.done .qi-name{text-decoration:line-through;color:var(--muted);}
+.qi-pts{font-size:11px;font-weight:700;color:var(--gold);background:rgba(196,154,108,0.12);padding:2px 8px;border-radius:8px;display:inline-block;margin-top:5px;}
+.qi-meta{font-size:11px;color:var(--muted);margin-top:5px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.qi-praise{margin-top:8px;padding:8px 10px;background:rgba(196,154,108,0.1);border-radius:8px;font-size:12px;color:var(--gold);line-height:1.5;}
+.qi-note{margin-top:8px;}
+.qi-note textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;resize:none;height:64px;}
+.qi-note textarea:focus{outline:none;border-color:var(--gold);}
+.check-btn{width:100%;margin-top:10px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;}
+.check-btn:active{transform:scale(0.97);}
+.check-btn:disabled{background:var(--bg3);color:var(--muted);cursor:default;}
+.status-chip{font-size:11px;padding:3px 8px;border-radius:8px;}
+.chip-pending{background:rgba(224,123,42,0.2);color:var(--orange);}
+.chip-done{background:var(--green-bg);color:var(--green);}
+.chip-rejected{background:rgba(224,85,85,0.15);color:var(--red);}
+
+/* ===== ADMIN ===== */
+#scr-admin .scroll-area{padding:14px;padding-bottom:24px;}
+.section-head{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.05em;margin:16px 0 8px;}
+.section-head:first-child{margin-top:0;}
+.approval-card{background:var(--surface);border:1px solid var(--orange);border-radius:var(--r);padding:14px;margin-bottom:8px;}
+.apv-info strong{font-size:14px;display:block;}
+.apv-info span{font-size:12px;color:var(--muted);}
+.apv-quest-name{font-size:13px;margin:6px 0 4px;color:var(--text);}
+.apv-pts{font-size:12px;font-weight:700;color:var(--gold);}
+.praise-ta{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;resize:none;height:58px;margin:8px 0;}
+.praise-ta:focus{outline:none;border-color:var(--gold);}
+.apv-actions{display:flex;gap:8px;}
+.apv-btn{flex:1;padding:10px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all .18s;}
+.apv-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green);}
+.apv-ok:active{background:var(--green);color:#fff;}
+.apv-ng{background:rgba(224,85,85,0.1);color:var(--red);border:1px solid var(--red);}
+.apv-ng:active{background:var(--red);color:#fff;}
+.empty-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;text-align:center;color:var(--muted);font-size:13px;margin-bottom:8px;}
+.admin-staff-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+.asc-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.asc-body{flex:1;}
+.asc-name{font-size:14px;font-weight:700;}
+.asc-sub{font-size:11px;color:var(--muted);}
+.asc-pts{font-size:16px;font-weight:800;color:var(--gold);flex-shrink:0;}
+.asc-bar{height:4px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden;}
+.asc-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));}
+
+/* add staff form */
+.add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.form-group{margin-bottom:10px;}
+label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+input[type=text],input[type=date],select{width:100%;padding:9px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;}
+input:focus,select:focus{outline:none;border-color:var(--gold);}
+select option{background:var(--bg3);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn-gold{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;transition:all .18s;}
+.btn-gold:active{transform:scale(0.98);}
+
+/* ===== LEVEL UP OVERLAY ===== */
+.levelup-overlay{position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s;}
+.levelup-overlay.show{opacity:1;pointer-events:all;}
+.levelup-box{background:var(--bg2);border:2px solid var(--gold);border-radius:20px;padding:28px 24px;text-align:center;max-width:300px;width:90%;transform:scale(0.85);transition:transform .3s;}
+.levelup-overlay.show .levelup-box{transform:scale(1);}
+.lv-emoji{font-size:52px;display:block;margin-bottom:10px;}
+.lv-label{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-bottom:4px;}
+.lv-name{font-size:24px;font-weight:800;color:var(--gold);text-shadow:0 0 20px var(--gold-glow);}
+.lv-pts{font-size:32px;font-weight:800;color:var(--text);margin:10px 0 6px;}
+.lv-desc{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px;}
+.lv-close{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* ===== CELEBRATION (quest submit) ===== */
+.cel-overlay{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .3s;}
+.cel-overlay.show{opacity:1;pointer-events:all;}
+.cel-box{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:24px 20px;text-align:center;max-width:280px;width:90%;transform:scale(0.85);transition:transform .3s;}
+.cel-overlay.show .cel-box{transform:scale(1);}
+.cel-icon{font-size:44px;display:block;margin-bottom:8px;}
+.cel-title{font-size:17px;font-weight:800;margin-bottom:6px;color:var(--gold);}
+.cel-desc{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px;}
+.cel-close{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* confetti */
+.confetti-piece{position:fixed;border-radius:2px;opacity:0;animation:cf 1.4s ease-in forwards;pointer-events:none;}
+@keyframes cf{0%{transform:translateY(-10px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:9px 18px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:90vw;}
+.toast.show{opacity:1;}
+
+/* LOADING */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;color:var(--muted);}
+.spinner{width:26px;height:26px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty{text-align:center;padding:30px 20px;color:var(--muted);font-size:13px;}
+
+/* alert dot */
+.alert-dot{display:inline-block;width:7px;height:7px;background:var(--red);border-radius:50%;margin-left:4px;vertical-align:middle;}
+
+/* pending count badge */
+.pending-badge{background:var(--orange);color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:6px;font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SCREEN 1: MODE SELECT / PASSCODE
+     ============================================================ -->
+<div class="screen active" id="scr-passcode">
+  <!-- Mode Select -->
+  <div id="mode-select" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:32px 20px;">
+    <div class="logo" style="margin-bottom:36px;">
+      <div class="logo-title">✦ STORIA QUEST</div>
+      <div class="logo-sub">入社後成長システム</div>
+    </div>
+    <div class="mode-wrap">
+      <button class="mode-btn" onclick="selectMode('staff')">
+        <div class="mode-icon">⚔️</div>
+        <div class="mode-info"><strong>マイクエスト</strong><span>自分の成長を確認・チェックする</span></div>
+      </button>
+      <button class="mode-btn" onclick="selectMode('admin')">
+        <div class="mode-icon">🛡️</div>
+        <div class="mode-info"><strong>管理・承認</strong><span>進捗確認・承認・スタッフ追加 <span id="admin-dot" class="alert-dot" style="display:none;"></span></span></div>
+      </button>
+    </div>
+  </div>
+  <!-- PIN Entry -->
+  <div id="pin-entry" style="display:none;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:32px 20px;">
+    <div class="logo" style="margin-bottom:24px;">
+      <div class="logo-title">🛡️ 管理者認証</div>
+    </div>
+    <div class="pin-wrap">
+      <div class="pin-label">PINコードを入力してください</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-grid">
+        <button class="pin-key" onclick="pinInput('1')">1</button>
+        <button class="pin-key" onclick="pinInput('2')">2</button>
+        <button class="pin-key" onclick="pinInput('3')">3</button>
+        <button class="pin-key" onclick="pinInput('4')">4</button>
+        <button class="pin-key" onclick="pinInput('5')">5</button>
+        <button class="pin-key" onclick="pinInput('6')">6</button>
+        <button class="pin-key" onclick="pinInput('7')">7</button>
+        <button class="pin-key" onclick="pinInput('8')">8</button>
+        <button class="pin-key" onclick="pinInput('9')">9</button>
+        <button class="pin-key" onclick="pinClear()" style="font-size:13px;color:var(--muted);">C</button>
+        <button class="pin-key" onclick="pinInput('0')">0</button>
+        <button class="pin-key pin-back" onclick="pinBack()">⌫</button>
+      </div>
+      <button class="back-to-mode" onclick="backToMode()">← モード選択に戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 2: STAFF SELECT
+     ============================================================ -->
+<div class="screen" id="scr-staff-select">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('scr-passcode');showModeSelect();">←</button>
+    <div class="top-title">スタッフを選択</div>
+  </div>
+  <div class="scroll-area" id="staff-select-list">
+    <div class="loading"><div class="spinner"></div>読み込み中...</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 3: PHASE SELECT (ピラミッド)
+     ============================================================ -->
+<div class="screen" id="scr-phase">
+  <!-- Hero -->
+  <div class="phase-hero" id="phase-hero">
+    <div class="hero-top">
+      <div class="hero-avatar" id="ph-avatar">？</div>
+      <div>
+        <div class="hero-name" id="ph-name">-</div>
+        <div class="hero-meta" id="ph-meta">-</div>
+      </div>
+      <div class="hero-score-wrap">
+        <div class="hero-pts" id="ph-pts">0</div>
+        <div class="hero-pts-label">pts</div>
+      </div>
+    </div>
+    <div class="level-display">
+      <div class="level-name" id="ph-level-name">Seed</div>
+      <div class="level-sub" id="ph-level-sub">次のレベルまで...</div>
+    </div>
+    <div class="level-bar-wrap">
+      <div class="level-bar-track"><div class="level-bar-fill" id="ph-level-bar" style="width:0%"></div></div>
+      <div class="level-bar-label"><span id="ph-bar-cur">0 pts</span><span id="ph-bar-next">-</span></div>
+    </div>
+  </div>
+  <!-- Phase cards (scrollable) -->
+  <div class="scroll-area" style="padding:14px;">
+    <div class="pyramid-title">📋 フェーズを選んでください</div>
+    <div class="phase-cards" id="phase-cards">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+  <div class="top-bar" style="position:absolute;top:0;left:0;right:0;background:transparent;border:none;padding:10px 14px;">
+    <button class="back-btn" onclick="showScreen('scr-staff-select');loadStaffSelect();">←</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 4: QUEST LIST
+     ============================================================ -->
+<div class="screen" id="scr-quest">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('scr-phase');">←</button>
+    <div class="top-title" id="quest-phase-title">-</div>
+    <div id="quest-phase-score" style="font-size:13px;color:var(--gold);font-weight:700;"></div>
+  </div>
+  <div class="scroll-area" id="quest-list" style="padding:12px 14px 24px;">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 5: ADMIN
+     ============================================================ -->
+<div class="screen" id="scr-admin">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('scr-passcode');showModeSelect();">←</button>
+    <div class="top-title">管理・承認</div>
+    <span id="pending-cnt-badge" class="pending-badge" style="display:none;"></span>
+  </div>
+  <div class="scroll-area" id="admin-scroll">
+    <div style="padding:14px;padding-bottom:24px;">
+      <div class="section-head">⏳ 承認待ちクエスト</div>
+      <div id="approval-list"><div class="loading"><div class="spinner"></div></div></div>
+      <div class="section-head">📊 スタッフ一覧</div>
+      <div id="admin-staff-list"><div class="loading"><div class="spinner"></div></div></div>
+      <div class="section-head">➕ スタッフ追加</div>
+      <div class="add-form">
+        <div class="form-row">
+          <div class="form-group"><label>スタッフ名</label><input type="text" id="ns-name" placeholder="田中 花子"></div>
+          <div class="form-group"><label>役職</label><select id="ns-role"><option>アシスタント</option><option>スタイリスト</option><option>JRスタイリスト</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>店舗</label><select id="ns-store"><option>品川</option><option>蒲田</option><option>大井町</option><option>池上</option><option>川崎</option><option>大森</option></select></div>
+          <div class="form-group"><label>入社日</label><input type="date" id="ns-date"></div>
+        </div>
+        <div class="form-group"><label>備考</label><input type="text" id="ns-note" placeholder="前職カラー経験あり など"></div>
+        <button class="btn-gold" onclick="saveStaff()">スタッフを追加する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEVEL UP OVERLAY -->
+<div class="levelup-overlay" id="levelup-overlay" onclick="closeLevelUp()">
+  <div class="levelup-box" onclick="event.stopPropagation()">
+    <span class="lv-emoji" id="lv-emoji">🌟</span>
+    <div class="lv-label">LEVEL UP!</div>
+    <div class="lv-name" id="lv-name">Sprout</div>
+    <div class="lv-pts" id="lv-pts">50 pts</div>
+    <div class="lv-desc" id="lv-desc">おめでとう！次のステージへ進みました。管理者から称賛が届きます。</div>
+    <button class="lv-close" onclick="closeLevelUp()">次へ進む ✦</button>
+  </div>
+</div>
+
+<!-- CELEBRATION OVERLAY -->
+<div class="cel-overlay" id="cel-overlay" onclick="closeCelebration()">
+  <div class="cel-box" onclick="event.stopPropagation()">
+    <span class="cel-icon" id="cel-icon">🎯</span>
+    <div class="cel-title">クエスト申請！</div>
+    <div class="cel-desc" id="cel-desc">管理者が確認・承認するとポイントが正式に加算されます ✨</div>
+    <button class="cel-close" onclick="closeCelebration()">続ける</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const SUPABASE_URL  = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH';
+const ADMIN_PIN     = '1234'; // ← 後で変更可能
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* LEVELS (Storia original) */
+const LEVELS = [
+  {name:'Seed',    emoji:'🌱', min:0,   max:49,  desc:'美容師としての種を蒔く、はじまりの時期'},
+  {name:'Sprout',  emoji:'🌿', min:50,  max:119, desc:'着実に根を張り、芽吹いてきた証'},
+  {name:'Bloom',   emoji:'🌸', min:120, max:229, desc:'個性が開花し始めた、輝きのステージ'},
+  {name:'Craft',   emoji:'✂️', min:230, max:379, desc:'技と心が研ぎ澄まされた職人の領域'},
+  {name:'Maître',  emoji:'👑', min:380, max:99999,desc:'Storiaが誇る、美のマエストロ'},
+];
+const PHASE_LABELS = ['','入社〜2週間','入社〜1ヶ月','〜2ヶ月','〜3ヶ月','アカデミー〜8ヶ月','教育部連携'];
+const PHASE_SHORT  = ['','2週間','1ヶ月','2ヶ月','3ヶ月','8ヶ月','教育部'];
+const PHASE_COLORS = ['','#C49A6C','#5A9BD4','#4ABA7A','#9B7AE0','#E07B2A','#E05555'];
+const PHASE_PTS    = [0, 10, 15, 15, 15, 20, 25];
+
+/* STATE */
+let staffCache     = [];
+let itemsCache     = [];
+let currentStaff   = null;
+let currentPhase   = 1;
+let currentProgress= [];
+let pinBuffer      = '';
+
+/* ============================================================
+   INIT
+   ============================================================ */
+async function init() {
+  document.getElementById('ns-date').value = new Date().toISOString().split('T')[0];
+  await Promise.all([loadItems(), loadStaff()]);
+  checkAdminDot();
+}
+
+async function loadItems() {
+  const {data} = await sb.from('ob_check_items').select('*').eq('is_active',true).order('phase').order('sort_order');
+  itemsCache = data || [];
+}
+async function loadStaff() {
+  const {data} = await sb.from('ob_staff').select('*').eq('is_active',true).order('join_date',{ascending:false});
+  staffCache = data || [];
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showModeSelect() {
+  document.getElementById('mode-select').style.display='flex';
+  document.getElementById('pin-entry').style.display='none';
+  pinBuffer=''; updatePinDots();
+}
+
+/* ============================================================
+   MODE / PIN
+   ============================================================ */
+function selectMode(mode) {
+  if (mode === 'staff') {
+    showScreen('scr-staff-select');
+    loadStaffSelect();
+  } else {
+    document.getElementById('mode-select').style.display='none';
+    document.getElementById('pin-entry').style.display='flex';
+  }
+}
+function pinInput(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(()=>{
+      if (pinBuffer === ADMIN_PIN) {
+        pinBuffer=''; updatePinDots();
+        showScreen('scr-admin');
+        loadAdminData();
+      } else {
+        document.querySelectorAll('.pin-dot').forEach(el=>el.classList.add('error'));
+        setTimeout(()=>{ pinBuffer=''; updatePinDots(); document.querySelectorAll('.pin-dot').forEach(el=>el.classList.remove('error')); },700);
+      }
+    },100);
+  }
+}
+function pinBack()  { pinBuffer=pinBuffer.slice(0,-1); updatePinDots(); }
+function pinClear() { pinBuffer=''; updatePinDots(); }
+function backToMode(){ pinBuffer=''; updatePinDots(); showModeSelect(); }
+function updatePinDots() {
+  for(let i=0;i<4;i++){
+    const el=document.getElementById('pd'+i);
+    el.classList.remove('error');
+    el.classList.toggle('filled', i<pinBuffer.length);
+  }
+}
+
+/* ============================================================
+   STAFF SELECT
+   ============================================================ */
+async function loadStaffSelect() {
+  const el=document.getElementById('staff-select-list');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+  await loadStaff();
+  if(!staffCache.length){
+    el.innerHTML='<div class="empty">スタッフが登録されていません<br>管理画面から追加してください</div>';
+    return;
+  }
+  const {data:prog} = await sb.from('ob_progress').select('staff_id,is_approved,ob_check_items(phase)');
+  const scores={};
+  (prog||[]).forEach(p=>{
+    if(!p.is_approved) return;
+    if(!scores[p.staff_id]) scores[p.staff_id]=0;
+    scores[p.staff_id]+=(PHASE_PTS[p.ob_check_items?.phase]||10);
+  });
+  el.innerHTML='<div style="padding:14px;">'+staffCache.map(s=>{
+    const pts=scores[s.id]||0;
+    const lv=getLevel(pts);
+    return `<button class="staff-btn" onclick="openPhase(${s.id})">
+      <div class="s-avatar">${s.name.charAt(0)}</div>
+      <div class="s-info"><strong>${s.name}</strong><span>${s.store} ／ ${s.role}</span></div>
+      <div class="s-score">
+        <div class="pts">${pts}</div>
+        <div class="lv">${lv.emoji} ${lv.name}</div>
+      </div>
+    </button>`;
+  }).join('')+'</div>';
+}
+
+/* ============================================================
+   PHASE SELECT
+   ============================================================ */
+async function openPhase(staffId) {
+  currentStaff = staffCache.find(s=>s.id===staffId);
+  showScreen('scr-phase');
+  document.getElementById('ph-avatar').textContent = currentStaff.name.charAt(0);
+  document.getElementById('ph-name').textContent = currentStaff.name;
+  document.getElementById('ph-meta').textContent = `${currentStaff.store} ／ ${currentStaff.role}`;
+  await loadPhaseData();
+}
+
+async function loadPhaseData() {
+  const {data} = await sb.from('ob_progress').select('*, ob_check_items(*)').eq('staff_id',currentStaff.id).order('item_id');
+  currentProgress = data||[];
+
+  const pts = calcScore(currentProgress);
+  const lv  = getLevel(pts);
+  const nextLv = LEVELS[LEVELS.indexOf(lv)+1];
+
+  document.getElementById('ph-pts').textContent = pts;
+  document.getElementById('ph-level-name').textContent = `${lv.emoji} ${lv.name}`;
+  document.getElementById('ph-level-sub').textContent  = lv.desc;
+  document.getElementById('ph-bar-cur').textContent    = `${pts} pts`;
+
+  if(nextLv){
+    const pct = Math.round((pts-lv.min)/(nextLv.min-lv.min)*100);
+    document.getElementById('ph-level-bar').style.width = pct+'%';
+    document.getElementById('ph-bar-next').textContent = `次: ${nextLv.name} (${nextLv.min}pts)`;
+  } else {
+    document.getElementById('ph-level-bar').style.width='100%';
+    document.getElementById('ph-bar-next').textContent='MAX';
+  }
+
+  // phase cards
+  const byPhase={};
+  currentProgress.forEach(p=>{
+    const ph=p.ob_check_items?.phase;
+    if(!ph) return;
+    if(!byPhase[ph]) byPhase[ph]={total:0,done:0,pending:0};
+    byPhase[ph].total++;
+    if(p.is_approved) byPhase[ph].done++;
+    else if(p.self_checked && !p.rejected) byPhase[ph].pending++;
+  });
+
+  const cardsEl = document.getElementById('phase-cards');
+  cardsEl.innerHTML = [1,2,3,4,5,6].filter(ph=>byPhase[ph]?.total>0).map(ph=>{
+    const d=byPhase[ph]||{total:0,done:0,pending:0};
+    const allDone=d.done===d.total && d.total>0;
+    const pct=d.total?Math.round(d.done/d.total*100):0;
+    return `<div class="phase-card${allDone?' all-done':''}" onclick="openQuest(${ph})">
+      <div class="phase-num" style="background:${PHASE_COLORS[ph]}22;color:${PHASE_COLORS[ph]}">${ph}</div>
+      <div class="phase-info">
+        <strong>${PHASE_LABELS[ph]}</strong>
+        <span>${pct}% 完了${d.pending?' ／ ⏳'+d.pending+'件承認待ち':''}</span>
+        <div class="mini-bar"><div class="mini-bar-fill" style="width:${pct}%;background:${PHASE_COLORS[ph]}"></div></div>
+      </div>
+      <div class="phase-prog">${allDone?'<div class="done-icon">✅</div>':`<div class="frac" style="color:${PHASE_COLORS[ph]}">${d.done}/${d.total}</div>`}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   QUEST LIST
+   ============================================================ */
+async function openQuest(phase) {
+  currentPhase = phase;
+  showScreen('scr-quest');
+  document.getElementById('quest-phase-title').textContent = PHASE_LABELS[phase];
+  renderQuestList();
+}
+
+function renderQuestList() {
+  const el=document.getElementById('quest-list');
+  const items=currentProgress.filter(p=>p.ob_check_items?.phase===currentPhase);
+  if(!items.length){el.innerHTML='<div class="empty">項目がありません</div>';return;}
+  const done=items.filter(p=>p.is_approved).length;
+  document.getElementById('quest-phase-score').textContent=`${done}/${items.length}`;
+  el.innerHTML=items.map(p=>renderQuestItem(p)).join('');
+}
+
+function renderQuestItem(p) {
+  const item=p.ob_check_items;
+  const pts=PHASE_PTS[item?.phase]||10;
+  const isApproved=p.is_approved;
+  const isPending=p.self_checked && !isApproved && !p.rejected;
+  const isRejected=p.rejected;
+
+  let iconClass='', statusChip='', btnText='完了しました ✓', btnDisabled='';
+  let cardClass='';
+  if(isApproved){cardClass='done';iconClass='done';btnDisabled='disabled';btnText='承認済み ✓';}
+  else if(isPending){cardClass='pending';iconClass='pending';btnDisabled='disabled';btnText='承認待ち ⏳';}
+  else if(isRejected){cardClass='rejected';iconClass='rejected';btnText='再チャレンジ ↺';}
+
+  const iconChar = isApproved?'✓':isPending?'⏳':isRejected?'✗':'';
+  const praiseHtml = p.praise_message ? `<div class="qi-praise">✨ ${p.praise_message}</div>` : '';
+  const noteHtml = item?.type==='text' ? `<div class="qi-note">
+    <textarea ${isApproved?'readonly':''} onblur="saveNote(${p.id},this.value)" placeholder="コメントを入力...">${p.note_text||''}</textarea>
+  </div>` : '';
+  const metaHtml = `<div class="qi-meta">
+    ${p.due_date?`📅 ${new Date(p.due_date).toLocaleDateString('ja-JP')}`:''}
+    ${isApproved&&p.checked_by?`<span style="color:var(--green);">✓ ${p.checked_by}</span>`:''}
+    ${isPending?'<span class="status-chip chip-pending">承認待ち</span>':''}
+    ${isRejected?'<span class="status-chip chip-rejected">再チャレンジ</span>':''}
+  </div>`;
+
+  return `<div class="quest-item ${cardClass}" id="qi-${p.id}">
+    <div class="qi-top">
+      <div class="qi-icon ${iconClass}">${iconChar}</div>
+      <div class="qi-body">
+        <div class="qi-name">${item?.name||'-'}</div>
+        <div class="qi-pts">+${pts} pts</div>
+        ${metaHtml}
+        ${praiseHtml}
+        ${noteHtml}
+      </div>
+    </div>
+    ${!isApproved?`<button class="check-btn" ${btnDisabled} onclick="selfCheck(${p.id},${pts})">${btnText}</button>`:''}
+  </div>`;
+}
+
+async function selfCheck(progressId, pts) {
+  const prevScore = calcScore(currentProgress);
+  await sb.from('ob_progress').update({
+    self_checked:true, self_checked_at:new Date().toISOString(), rejected:false
+  }).eq('id',progressId);
+  spawnConfetti();
+  document.getElementById('cel-icon').textContent=['🎯','⭐','✨','🌟','💫'][Math.floor(Math.random()*5)];
+  document.getElementById('cel-desc').textContent=`+${pts}pts を申請しました！管理者の承認後に正式加算されます ✨`;
+  document.getElementById('cel-overlay').classList.add('show');
+  // refresh
+  const {data} = await sb.from('ob_progress').select('*, ob_check_items(*)').eq('staff_id',currentStaff.id);
+  currentProgress = data||[];
+  renderQuestList();
+  checkAdminDot();
+}
+
+async function saveNote(progressId, text) {
+  await sb.from('ob_progress').update({note_text:text}).eq('id',progressId);
+}
+
+/* ============================================================
+   LEVEL UTILS
+   ============================================================ */
+function getLevel(pts) {
+  for(let i=LEVELS.length-1;i>=0;i--){ if(pts>=LEVELS[i].min) return LEVELS[i]; }
+  return LEVELS[0];
+}
+function calcScore(progress) {
+  return (progress||[]).filter(p=>p.is_approved).reduce((s,p)=>s+(PHASE_PTS[p.ob_check_items?.phase]||10),0);
+}
+
+/* ============================================================
+   ADMIN
+   ============================================================ */
+async function loadAdminData() {
+  await Promise.all([loadApprovals(), loadAdminStaffs()]);
+}
+
+async function loadApprovals() {
+  const el=document.getElementById('approval-list');
+  const {data} = await sb.from('ob_progress')
+    .select('*, ob_staff(name,store), ob_check_items(name,phase,type)')
+    .eq('self_checked',true).eq('is_approved',false).eq('rejected',false)
+    .order('self_checked_at');
+
+  const badge=document.getElementById('pending-cnt-badge');
+  if(!data||!data.length){
+    el.innerHTML='<div class="empty-box">✅ 承認待ちはありません</div>';
+    badge.style.display='none';
+    return;
+  }
+  badge.style.display='inline';
+  badge.textContent=data.length;
+
+  el.innerHTML=data.map(p=>{
+    const pts=PHASE_PTS[p.ob_check_items?.phase]||10;
+    return `<div class="approval-card">
+      <div class="apv-info">
+        <strong>${p.ob_staff?.name} <span style="font-size:11px;font-weight:400;color:var(--muted);">${p.ob_staff?.store}</span></strong>
+        <span>${PHASE_LABELS[p.ob_check_items?.phase||1]}</span>
+      </div>
+      <div class="apv-quest-name">${p.ob_check_items?.name}</div>
+      <div class="apv-pts">+${pts} pts</div>
+      <textarea class="praise-ta" id="praise-${p.id}" placeholder="称賛メッセージを入力（任意）✨ — 送ると本人の画面に表示されます"></textarea>
+      <div class="apv-actions">
+        <button class="apv-btn apv-ng" onclick="rejectQuest(${p.id})">✗ 差し戻し</button>
+        <button class="apv-btn apv-ok" onclick="approveQuest(${p.id},${p.staff_id},${pts},'${p.ob_staff?.name}')">✓ 承認する</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function approveQuest(progressId, staffId, pts, staffName) {
+  const praise = document.getElementById('praise-'+progressId)?.value.trim()||null;
+  const approver = prompt('承認者名を入力してください：');
+  if(approver===null) return;
+
+  // 承認前スコア
+  const {data:beforeProg} = await sb.from('ob_progress').select('is_approved,ob_check_items(phase)').eq('staff_id',staffId);
+  const beforeScore = calcScore(beforeProg||[]);
+  const beforeLv = getLevel(beforeScore);
+
+  await sb.from('ob_progress').update({
+    is_approved:true, is_done:true,
+    checked_by:approver||'管理者', checked_at:new Date().toISOString(),
+    praise_message:praise
+  }).eq('id',progressId);
+
+  // 承認後スコア
+  const {data:afterProg} = await sb.from('ob_progress').select('is_approved,ob_check_items(phase)').eq('staff_id',staffId);
+  const afterScore = calcScore(afterProg||[]);
+  const afterLv = getLevel(afterScore);
+
+  // レベルアップ検知
+  if(afterLv.name !== beforeLv.name) {
+    document.getElementById('lv-emoji').textContent=afterLv.emoji;
+    document.getElementById('lv-name').textContent=afterLv.name;
+    document.getElementById('lv-pts').textContent=afterScore+' pts';
+    document.getElementById('lv-desc').textContent=`${staffName}さんが「${afterLv.name}」に到達しました！✨\n${afterLv.desc}`;
+    document.getElementById('levelup-overlay').classList.add('show');
+    spawnConfetti();
+  } else {
+    showToast(`✓ 承認しました`);
+  }
+  await loadAdminData();
+}
+
+async function rejectQuest(progressId) {
+  await sb.from('ob_progress').update({self_checked:false,rejected:true,self_checked_at:null}).eq('id',progressId);
+  showToast('差し戻しました');
+  await loadAdminData();
+}
+
+async function loadAdminStaffs() {
+  const el=document.getElementById('admin-staff-list');
+  const {data:prog} = await sb.from('ob_progress').select('staff_id,is_approved,ob_check_items(phase)');
+  const scores={};const totals={};
+  (prog||[]).forEach(p=>{
+    const s=p.staff_id;
+    if(!totals[s]) totals[s]=0; totals[s]++;
+    if(!p.is_approved) return;
+    if(!scores[s]) scores[s]=0; scores[s]+=(PHASE_PTS[p.ob_check_items?.phase]||10);
+  });
+  const maxPts=Math.max(...Object.values(scores),1);
+  el.innerHTML=(staffCache||[]).map(s=>{
+    const pts=scores[s.id]||0;
+    const lv=getLevel(pts);
+    const pct=Math.round(pts/Math.max(maxPts,1)*100);
+    return `<div class="admin-staff-card">
+      <div class="asc-avatar">${s.name.charAt(0)}</div>
+      <div class="asc-body">
+        <div class="asc-name">${s.name} <span style="font-size:11px;color:var(--muted);">${s.store}</span></div>
+        <div class="asc-sub">${lv.emoji} ${lv.name} ／ ${s.role}</div>
+        <div class="asc-bar"><div class="asc-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="asc-pts">${pts}<span style="font-size:10px;color:var(--muted);">pts</span></div>
+    </div>`;
+  }).join('')||'<div class="empty-box">スタッフがいません</div>';
+}
+
+async function saveStaff() {
+  const name=document.getElementById('ns-name').value.trim();
+  const role=document.getElementById('ns-role').value;
+  const store=document.getElementById('ns-store').value;
+  const join_date=document.getElementById('ns-date').value;
+  const note=document.getElementById('ns-note').value.trim();
+  if(!name||!join_date){alert('スタッフ名と入社日は必須です');return;}
+  const {data,error}=await sb.from('ob_staff').insert({name,role,store,join_date,note:note||null}).select().single();
+  if(error){alert('エラー: '+error.message);return;}
+  const ins=itemsCache.filter(i=>i.is_active).map(item=>({
+    staff_id:data.id, item_id:item.id,
+    is_done:false, is_approved:false, self_checked:false, rejected:false,
+    due_date:calcDueDate(join_date,item.phase)
+  }));
+  if(ins.length) await sb.from('ob_progress').insert(ins);
+  document.getElementById('ns-name').value='';
+  document.getElementById('ns-note').value='';
+  await loadStaff();
+  showToast(`${name} を追加しました`);
+  await loadAdminData();
+}
+
+function calcDueDate(join,phase){
+  const d=new Date(join);
+  d.setDate(d.getDate()+[0,14,30,60,90,240,90][phase]||30);
+  return d.toISOString().split('T')[0];
+}
+
+async function checkAdminDot(){
+  const {count}=await sb.from('ob_progress').select('id',{count:'exact',head:true})
+    .eq('self_checked',true).eq('is_approved',false).eq('rejected',false);
+  document.getElementById('admin-dot').style.display=count>0?'inline-block':'none';
+}
+
+/* ============================================================
+   EFFECTS
+   ============================================================ */
+function closeLevelUp(){ document.getElementById('levelup-overlay').classList.remove('show'); }
+function closeCelebration(){ document.getElementById('cel-overlay').classList.remove('show'); }
+
+function spawnConfetti(){
+  const colors=['#C49A6C','#4ABA7A','#5A9BD4','#E07B2A','#9B7AE0','#fff'];
+  for(let i=0;i<28;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    const c=colors[Math.floor(Math.random()*colors.length)];
+    const w=6+Math.random()*8;
+    el.style.cssText=`left:${Math.random()*100}vw;top:-10px;background:${c};width:${w}px;height:${w}px;animation-delay:${Math.random()*.4}s;animation-duration:${1.2+Math.random()*.8}s;border-radius:${Math.random()>.5?'50%':'2px'};`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),2500);
+  }
+}
+
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+/* BOOT */
+init();
+</script>
+</body>
+</html>
