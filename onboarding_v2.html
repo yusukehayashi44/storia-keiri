@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storia Quest</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --gold: #C49A6C;
+  --gold-dark: #9B7145;
+  --gold-light: #F5EDE0;
+  --gold-glow: rgba(196,154,108,0.3);
+  --bg: #0F0E0C;
+  --bg2: #1A1815;
+  --bg3: #242220;
+  --surface: #2A2825;
+  --border: #3A3835;
+  --text: #F0EAE0;
+  --text-muted: #8A8070;
+  --green: #4ABA7A;
+  --green-bg: rgba(74,186,122,0.15);
+  --red: #E05555;
+  --orange: #E07B2A;
+  --blue: #5A9BD4;
+  --purple: #9B7AE0;
+  --r: 12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+
+/* SCREENS */
+.screen{display:none;min-height:100vh;}
+.screen.active{display:block;}
+
+/* ===== SELECT SCREEN ===== */
+#scr-select{background:linear-gradient(160deg,#1A1510 0%,#0F0E0C 60%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;}
+.logo-area{text-align:center;margin-bottom:40px;}
+.logo-title{font-size:28px;font-weight:800;letter-spacing:.15em;color:var(--gold);text-shadow:0 0 30px var(--gold-glow);}
+.logo-sub{font-size:12px;color:var(--text-muted);margin-top:6px;letter-spacing:.1em;}
+.mode-cards{width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;}
+.mode-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:16px;}
+.mode-card:hover,.mode-card:active{border-color:var(--gold);background:var(--bg3);transform:scale(1.02);}
+.mode-icon{font-size:32px;}
+.mode-info strong{display:block;font-size:15px;margin-bottom:3px;}
+.mode-info span{font-size:12px;color:var(--text-muted);}
+
+/* ===== STAFF SELECT ===== */
+#scr-staff-select{background:var(--bg);}
+.top-bar{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;}
+.back-btn{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px;}
+.top-title{font-size:16px;font-weight:700;flex:1;}
+.content{padding:20px;max-width:500px;margin:0 auto;}
+.staff-btn{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:10px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;transition:all .2s;color:var(--text);}
+.staff-btn:hover{border-color:var(--gold);}
+.staff-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;}
+.staff-info strong{display:block;font-size:14px;}
+.staff-info span{font-size:12px;color:var(--text-muted);}
+.staff-score-mini{margin-left:auto;text-align:right;}
+.staff-score-mini .pts{font-size:18px;font-weight:800;color:var(--gold);}
+.staff-score-mini .pts-label{font-size:10px;color:var(--text-muted);}
+.add-staff-btn{width:100%;background:none;border:2px dashed var(--border);border-radius:var(--r);padding:16px;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .2s;}
+.add-staff-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ===== QUEST SCREEN ===== */
+#scr-quest{background:var(--bg);}
+.quest-header{background:var(--bg2);padding:20px;border-bottom:1px solid var(--border);}
+.qh-top{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.qh-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;}
+.qh-info strong{font-size:16px;display:block;}
+.qh-info span{font-size:12px;color:var(--text-muted);}
+.score-display{display:flex;align-items:baseline;gap:6px;margin-left:auto;}
+.score-num{font-size:30px;font-weight:800;color:var(--gold);text-shadow:0 0 20px var(--gold-glow);}
+.score-unit{font-size:12px;color:var(--text-muted);}
+
+/* PYRAMID */
+.pyramid-wrap{margin:0 0 14px;}
+.pyramid-label{font-size:11px;color:var(--text-muted);margin-bottom:8px;text-align:center;}
+.pyramid{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.pyr-row{display:flex;gap:4px;}
+.pyr-block{height:16px;border-radius:3px;transition:all .3s;}
+.pyr-block.filled{background:linear-gradient(90deg,var(--gold-dark),var(--gold));box-shadow:0 0 8px var(--gold-glow);}
+.pyr-block.empty{background:var(--bg3);border:1px solid var(--border);}
+
+/* PHASE PROGRESS BAR */
+.phase-bars{display:flex;flex-direction:column;gap:6px;}
+.phase-bar-row{display:flex;align-items:center;gap:8px;}
+.phase-bar-label{font-size:10px;color:var(--text-muted);width:80px;flex-shrink:0;}
+.phase-bar-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.phase-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));transition:width .5s ease;}
+.phase-bar-pct{font-size:10px;color:var(--text-muted);width:28px;text-align:right;}
+
+/* QUEST TABS */
+.quest-tabs{display:flex;overflow-x:auto;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:9;}
+.qtab{flex:0 0 auto;padding:12px 16px;font-size:12px;font-weight:600;color:var(--text-muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;}
+.qtab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.qtab .done-badge{background:var(--green);color:#fff;border-radius:10px;font-size:10px;padding:1px 5px;margin-left:4px;}
+
+/* QUEST LIST */
+.quest-content{padding:16px;max-width:600px;margin:0 auto;padding-bottom:100px;}
+.quest-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;transition:all .2s;position:relative;overflow:hidden;}
+.quest-item.completed{border-color:var(--green);background:rgba(74,186,122,0.05);}
+.quest-item.completed::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);}
+.quest-item.pending-approval{border-color:var(--orange);background:rgba(224,123,42,0.05);}
+.quest-item.pending-approval::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange);}
+
+.quest-top{display:flex;align-items:flex-start;gap:12px;}
+.quest-check{width:26px;height:26px;border:2px solid var(--border);border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;margin-top:1px;}
+.quest-check.checked{background:var(--green);border-color:var(--green);}
+.quest-check.checked::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+.quest-check.pending{background:var(--orange);border-color:var(--orange);}
+.quest-check.pending::after{content:'⏳';font-size:12px;}
+.quest-body{flex:1;}
+.quest-name{font-size:14px;font-weight:600;line-height:1.4;}
+.quest-item.completed .quest-name{text-decoration:line-through;color:var(--text-muted);}
+.quest-pts{display:inline-block;font-size:11px;font-weight:700;color:var(--gold);background:rgba(196,154,108,0.15);padding:2px 8px;border-radius:10px;margin-top:5px;}
+.quest-tags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.qtag{font-size:10px;padding:2px 7px;border-radius:8px;}
+.qtag-edu{background:rgba(90,155,212,0.2);color:var(--blue);}
+.qtag-hr{background:rgba(155,122,224,0.2);color:var(--purple);}
+.qtag-ops{background:rgba(196,154,108,0.15);color:var(--gold);}
+.qtag-text{background:rgba(224,123,42,0.15);color:var(--orange);}
+
+.quest-meta{margin-top:8px;font-size:11px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.approved-by{color:var(--green);font-weight:600;}
+
+.quest-note-area{margin-top:10px;}
+.quest-note-area textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:60px;}
+.quest-note-area textarea:focus{outline:none;border-color:var(--gold);}
+.note-save-btn{margin-top:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text-muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;}
+
+.self-check-btn{width:100%;margin-top:12px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
+.self-check-btn:active{transform:scale(0.97);}
+.self-check-btn:disabled{background:var(--bg3);color:var(--text-muted);cursor:not-allowed;}
+
+/* ===== ADMIN SCREEN ===== */
+#scr-admin{background:var(--bg);}
+.admin-content{padding:16px;max-width:600px;margin:0 auto;padding-bottom:80px;}
+.section-title{font-size:13px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;margin:20px 0 10px;}
+
+/* APPROVAL CARD */
+.approval-card{background:var(--surface);border:1px solid var(--orange);border-radius:var(--r);padding:14px;margin-bottom:10px;}
+.approval-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.apv-staff{font-size:13px;font-weight:700;}
+.apv-quest{font-size:13px;color:var(--text-muted);}
+.apv-pts{font-size:12px;font-weight:700;color:var(--gold);margin-left:auto;}
+.approval-actions{display:flex;gap:8px;}
+.apv-btn{flex:1;padding:9px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all .2s;}
+.apv-approve{background:var(--green-bg);color:var(--green);border:1px solid var(--green);}
+.apv-approve:hover{background:var(--green);color:#fff;}
+.apv-reject{background:rgba(224,85,85,0.1);color:var(--red);border:1px solid var(--red);}
+.praise-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;margin-bottom:8px;resize:none;height:60px;}
+.praise-input:focus{outline:none;border-color:var(--gold);}
+
+/* ADMIN STAFF LIST */
+.admin-staff-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;cursor:pointer;transition:all .2s;}
+.admin-staff-card:hover{border-color:var(--gold);}
+.asc-top{display:flex;align-items:center;gap:10px;}
+.asc-name{font-weight:700;font-size:14px;flex:1;}
+.asc-store{font-size:12px;color:var(--text-muted);}
+.asc-score{font-size:18px;font-weight:800;color:var(--gold);}
+.asc-bar-wrap{margin-top:8px;}
+.asc-bar-track{height:4px;background:var(--bg3);border-radius:2px;margin-top:4px;overflow:hidden;}
+.asc-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));}
+
+/* FORM */
+.form-group{margin-bottom:12px;}
+label{display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:5px;}
+input[type=text],input[type=date],select,textarea{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* BUTTONS */
+.btn{padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:all .2s;}
+.btn-gold{background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;}
+.btn-ghost{background:var(--bg3);color:var(--text-muted);border:1px solid var(--border);}
+.btn-w{width:100%;}
+.btn-sm{padding:7px 14px;font-size:12px;}
+
+/* ===== CELEBRATION ===== */
+.celebration-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);opacity:0;transition:opacity .3s;pointer-events:none;}
+.celebration-overlay.show{opacity:1;pointer-events:all;}
+.celebration-box{background:var(--bg2);border:2px solid var(--gold);border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;transform:scale(0.8);transition:transform .3s;}
+.celebration-overlay.show .celebration-box{transform:scale(1);}
+.cel-emoji{font-size:56px;display:block;margin-bottom:12px;}
+.cel-title{font-size:20px;font-weight:800;color:var(--gold);margin-bottom:8px;}
+.cel-desc{font-size:14px;color:var(--text-muted);line-height:1.6;}
+.cel-pts{font-size:36px;font-weight:800;color:var(--gold);margin:12px 0;text-shadow:0 0 20px var(--gold-glow);}
+.cel-close{margin-top:16px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:10px;padding:12px 32px;font-size:15px;font-weight:700;cursor:pointer;width:100%;}
+
+/* CONFETTI */
+.confetti-piece{position:fixed;width:10px;height:10px;border-radius:2px;opacity:0;animation:confetti-fall 1.5s ease-in forwards;}
+@keyframes confetti-fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:500px;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;}
+.modal-actions{display:flex;gap:8px;margin-top:12px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--text-muted);}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty{text-align:center;padding:40px;color:var(--text-muted);font-size:13px;}
+
+/* ALERT BADGE */
+.alert-dot{display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-left:4px;vertical-align:middle;}
+
+select option{background:var(--bg3);}
+</style>
+</head>
+<body>
+
+<!-- ===== SELECT SCREEN ===== -->
+<div class="screen active" id="scr-select">
+  <div class="logo-area">
+    <div class="logo-title">✦ STORIA QUEST</div>
+    <div class="logo-sub">入社後成長システム</div>
+  </div>
+  <div class="mode-cards">
+    <div class="mode-card" onclick="goStaffSelect()">
+      <div class="mode-icon">⚔️</div>
+      <div class="mode-info">
+        <strong>マイクエスト</strong>
+        <span>自分の成長を確認・チェックする</span>
+      </div>
+    </div>
+    <div class="mode-card" onclick="goAdmin()">
+      <div class="mode-icon">🛡️</div>
+      <div class="mode-info">
+        <strong>管理・承認</strong>
+        <span>進捗確認・クエスト承認をする <span id="admin-alert-dot" style="display:none;" class="alert-dot"></span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STAFF SELECT SCREEN ===== -->
+<div class="screen" id="scr-staff-select">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('scr-select')">←</button>
+    <div class="top-title">スタッフを選択</div>
+  </div>
+  <div class="content" id="staff-select-list">
+    <div class="loading"><div class="spinner"></div>読み込み中...</div>
+  </div>
+</div>
+
+<!-- ===== QUEST SCREEN ===== -->
+<div class="screen" id="scr-quest">
+  <div class="top-bar" style="background:var(--bg2);">
+    <button class="back-btn" onclick="showScreen('scr-staff-select')">←</button>
+    <div class="top-title" id="quest-staff-name">-</div>
+  </div>
+  <div class="quest-header">
+    <div class="qh-top">
+      <div class="qh-avatar" id="quest-avatar">？</div>
+      <div class="qh-info">
+        <strong id="qh-name">-</strong>
+        <span id="qh-meta">-</span>
+      </div>
+      <div class="score-display">
+        <span class="score-num" id="qh-score">0</span>
+        <span class="score-unit">pts</span>
+      </div>
+    </div>
+    <div class="pyramid-wrap">
+      <div class="pyramid-label">成長ピラミッド</div>
+      <div class="pyramid" id="pyramid"></div>
+    </div>
+    <div class="phase-bars" id="phase-bars"></div>
+  </div>
+  <div class="quest-tabs" id="quest-tabs"></div>
+  <div class="quest-content" id="quest-content">
+    <div class="loading"><div class="spinner"></div>読み込み中...</div>
+  </div>
+</div>
+
+<!-- ===== ADMIN SCREEN ===== -->
+<div class="screen" id="scr-admin">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('scr-select')">←</button>
+    <div class="top-title">管理・承認</div>
+  </div>
+  <div class="admin-content">
+    <div class="section-title">⏳ 承認待ちクエスト</div>
+    <div id="approval-list"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="section-title">📊 スタッフ進捗一覧</div>
+    <div id="admin-staff-list"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="section-title">➕ スタッフ追加</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;">
+      <div class="form-row">
+        <div class="form-group"><label>スタッフ名</label><input type="text" id="ns-name" placeholder="田中 花子"></div>
+        <div class="form-group"><label>役職</label>
+          <select id="ns-role">
+            <option>アシスタント</option><option>スタイリスト</option><option>JRスタイリスト</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>店舗</label>
+          <select id="ns-store">
+            <option>品川</option><option>蒲田</option><option>大井町</option><option>池上</option><option>川崎</option><option>大森</option>
+          </select>
+        </div>
+        <div class="form-group"><label>入社日</label><input type="date" id="ns-date"></div>
+      </div>
+      <div class="form-group"><label>備考</label><input type="text" id="ns-note" placeholder="前職カラー経験あり など"></div>
+      <button class="btn btn-gold btn-w" onclick="saveStaff()">スタッフを追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CELEBRATION ===== -->
+<div class="celebration-overlay" id="celebration" onclick="closeCelebration()">
+  <div class="celebration-box" onclick="event.stopPropagation()">
+    <span class="cel-emoji" id="cel-emoji">🎉</span>
+    <div class="cel-title" id="cel-title">クエスト申請完了！</div>
+    <div class="cel-pts" id="cel-pts">+10 pts</div>
+    <div class="cel-desc" id="cel-desc">管理者の承認後に正式にポイントが加算されます</div>
+    <button class="cel-close" onclick="closeCelebration()">続ける ✦</button>
+  </div>
+</div>
+
+<!-- ===== PRAISE MODAL ===== -->
+<div class="modal-overlay" id="modal-praise">
+  <div class="modal">
+    <div class="modal-title">✨ 称賛メッセージを送る</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;" id="praise-target-label">-</div>
+    <textarea class="praise-input" id="praise-text" placeholder="例：すごく上達が早かった！これからも楽しみにしてます✨"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal()">スキップ</button>
+      <button class="btn btn-gold" style="flex:2;" onclick="doApprove()">✓ 承認＋送る</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD STAFF MODAL -->
+<div class="modal-overlay" id="modal-add-staff">
+  <div class="modal">
+    <div class="modal-title">＋ スタッフ追加</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const PHASE_LABELS = ['','入社〜2週間','入社〜1ヶ月','〜2ヶ月','〜3ヶ月','アカデミー〜8ヶ月','教育部連携'];
+const PHASE_SHORT = ['','2週間','1ヶ月','2ヶ月','3ヶ月','8ヶ月','教育部'];
+const PHASE_PTS = [0, 10, 15, 15, 15, 20, 25]; // per quest base pts by phase
+const CAT_EMOJI = {edu:'📚',ops:'✂️',hr:'📋',null:'⭐'};
+
+let staffCache = [];
+let checkItemsCache = [];
+let currentStaff = null;
+let currentProgress = [];
+let currentPhase = 1;
+let pendingApprovalId = null;
+let pendingApprovalData = null;
+
+// ===== INIT =====
+async function init() {
+  await loadCheckItems();
+  await loadStaffList();
+  checkAdminAlerts();
+}
+
+// ===== SCREEN =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goStaffSelect() {
+  showScreen('scr-staff-select');
+  renderStaffSelectList();
+}
+
+function goAdmin() {
+  showScreen('scr-admin');
+  loadAdminData();
+}
+
+// ===== DATA =====
+async function loadCheckItems() {
+  const {data} = await sb.from('ob_check_items').select('*').eq('is_active',true).order('phase').order('sort_order');
+  checkItemsCache = data || [];
+}
+
+async function loadStaffList() {
+  const {data} = await sb.from('ob_staff').select('*').eq('is_active',true).order('join_date',{ascending:false});
+  staffCache = data || [];
+}
+
+// ===== STAFF SELECT =====
+async function renderStaffSelectList() {
+  const el = document.getElementById('staff-select-list');
+  if (!staffCache.length) {
+    el.innerHTML = '<div class="empty">スタッフが登録されていません<br>管理画面から追加してください</div>';
+    return;
+  }
+  // スコア取得
+  const {data: prog} = await sb.from('ob_progress').select('staff_id,is_approved,ob_check_items(phase)');
+  const scores = {};
+  (prog||[]).forEach(p => {
+    if (!p.is_approved) return;
+    if (!scores[p.staff_id]) scores[p.staff_id] = 0;
+    const pts = PHASE_PTS[p.ob_check_items?.phase || 1] || 10;
+    scores[p.staff_id] += pts;
+  });
+  el.innerHTML = staffCache.map(s => {
+    const initial = s.name.charAt(0);
+    const pts = scores[s.id] || 0;
+    return `<div class="staff-btn" onclick="openQuest(${s.id})">
+      <div class="staff-avatar">${initial}</div>
+      <div class="staff-info"><strong>${s.name}</strong><span>${s.store} ／ ${s.role}</span></div>
+      <div class="staff-score-mini"><div class="pts">${pts}</div><div class="pts-label">pts</div></div>
+    </div>`;
+  }).join('') + `<button class="add-staff-btn" onclick="goAdmin()">＋ 新しいスタッフを追加</button>`;
+}
+
+// ===== QUEST SCREEN =====
+async function openQuest(staffId) {
+  currentStaff = staffCache.find(s => s.id === staffId);
+  showScreen('scr-quest');
+  document.getElementById('quest-staff-name').textContent = currentStaff.name;
+  document.getElementById('qh-name').textContent = currentStaff.name;
+  document.getElementById('qh-meta').textContent = `${currentStaff.store} ／ ${currentStaff.role}`;
+  document.getElementById('quest-avatar').textContent = currentStaff.name.charAt(0);
+  await loadQuestData();
+}
+
+async function loadQuestData() {
+  const {data} = await sb.from('ob_progress')
+    .select('*, ob_check_items(*)')
+    .eq('staff_id', currentStaff.id)
+    .order('item_id');
+  currentProgress = data || [];
+  renderQuestHeader();
+  renderQuestTabs();
+  renderQuestList(currentPhase);
+}
+
+function calcScore(progress) {
+  return progress.filter(p => p.is_approved).reduce((sum, p) => {
+    return sum + (PHASE_PTS[p.ob_check_items?.phase || 1] || 10);
+  }, 0);
+}
+
+function renderQuestHeader() {
+  const score = calcScore(currentProgress);
+  document.getElementById('qh-score').textContent = score;
+
+  // Pyramid (max 5 levels, widths 1,2,3,4,5)
+  const maxScore = checkItemsCache.reduce((s,i) => s + (PHASE_PTS[i.phase]||10), 0) || 100;
+  const pct = Math.min(score / maxScore, 1);
+  const pyramid = document.getElementById('pyramid');
+  const levels = [1,2,3,4,5];
+  const filledLevels = Math.round(pct * 5);
+  pyramid.innerHTML = levels.map((w, idx) => {
+    const level = levels.length - idx; // top=1, bottom=5
+    const filled = level <= filledLevels;
+    const blocks = Array(w).fill(0).map((_,bi) => {
+      const blockFilled = filled || (level === filledLevels + 1 && bi < Math.round((pct * 5 - filledLevels) * w));
+      return `<div class="pyr-block ${blockFilled ? 'filled' : 'empty'}" style="width:${40/w}px;"></div>`;
+    }).join('');
+    return `<div class="pyr-row">${blocks}</div>`;
+  }).join('');
+
+  // Phase bars
+  const byPhase = {};
+  currentProgress.forEach(p => {
+    const ph = p.ob_check_items?.phase;
+    if (!ph) return;
+    if (!byPhase[ph]) byPhase[ph] = {total:0, done:0};
+    byPhase[ph].total++;
+    if (p.is_approved) byPhase[ph].done++;
+  });
+  const phaseBars = document.getElementById('phase-bars');
+  phaseBars.innerHTML = [1,2,3,4,5,6].map(ph => {
+    const d = byPhase[ph] || {total:0,done:0};
+    if (!d.total) return '';
+    const w = d.total ? Math.round(d.done/d.total*100) : 0;
+    return `<div class="phase-bar-row">
+      <div class="phase-bar-label">${PHASE_SHORT[ph]}</div>
+      <div class="phase-bar-track"><div class="phase-bar-fill" style="width:${w}%"></div></div>
+      <div class="phase-bar-pct">${w}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderQuestTabs() {
+  const byPhase = {};
+  currentProgress.forEach(p => {
+    const ph = p.ob_check_items?.phase;
+    if (!ph) return;
+    if (!byPhase[ph]) byPhase[ph] = {total:0,done:0};
+    byPhase[ph].total++;
+    if (p.is_approved) byPhase[ph].done++;
+  });
+  const tabs = document.getElementById('quest-tabs');
+  tabs.innerHTML = [1,2,3,4,5,6].filter(ph => byPhase[ph]?.total > 0).map(ph => {
+    const d = byPhase[ph] || {total:0,done:0};
+    const allDone = d.done === d.total && d.total > 0;
+    return `<button class="qtab ${currentPhase===ph?'active':''}" onclick="switchPhase(${ph})">
+      ${allDone ? '✓ ' : ''}${PHASE_SHORT[ph]}
+      <span class="done-badge">${d.done}/${d.total}</span>
+    </button>`;
+  }).join('');
+}
+
+function switchPhase(ph) {
+  currentPhase = ph;
+  renderQuestTabs();
+  renderQuestList(ph);
+}
+
+function renderQuestList(ph) {
+  const el = document.getElementById('quest-content');
+  const items = currentProgress.filter(p => p.ob_check_items?.phase === ph);
+  if (!items.length) { el.innerHTML = '<div class="empty">このフェーズの項目はありません</div>'; return; }
+  el.innerHTML = items.map(p => renderQuestItem(p)).join('');
+}
+
+function renderQuestItem(p) {
+  const item = p.ob_check_items;
+  const pts = PHASE_PTS[item?.phase || 1] || 10;
+  const isApproved = p.is_approved;
+  const isPending = p.self_checked && !isApproved && !p.rejected;
+  const isRejected = p.rejected;
+  const catTag = item?.category ? `<span class="qtag qtag-${item.category}">${{edu:'📚 教育部',ops:'✂️ 業務',hr:'📋 人事'}[item.category]||''}</span>` : '';
+  const typeTag = item?.type === 'text' ? '<span class="qtag qtag-text">📝 記述式</span>' : '';
+
+  let statusClass = '';
+  let checkClass = '';
+  let checkDisabled = '';
+  let btnText = '完了しました ✓';
+  let btnDisabled = '';
+
+  if (isApproved) { statusClass = 'completed'; checkClass = 'checked'; btnDisabled = 'disabled'; btnText = '承認済み ✓'; }
+  else if (isPending) { statusClass = 'pending-approval'; checkClass = 'pending'; btnDisabled = 'disabled'; btnText = '承認待ち ⏳'; }
+  else if (isRejected) { btnText = '再チャレンジ ↺'; }
+
+  const praiseArea = p.praise_message ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(196,154,108,0.1);border-radius:8px;font-size:12px;color:var(--gold);">✨ ${p.praise_message}</div>` : '';
+  const noteArea = item?.type === 'text' ? `
+    <div class="quest-note-area">
+      <textarea placeholder="コメントを入力..." ${isApproved?'readonly':''} onchange="saveNote(${p.id},this.value)">${p.note_text||''}</textarea>
+      ${!isApproved ? `<button class="note-save-btn" onclick="saveNote(${p.id},document.querySelector('[data-pid=\\'${p.id}\\']').value)">保存</button>` : ''}
+    </div>` : '';
+
+  return `<div class="quest-item ${statusClass}" id="qi-${p.id}">
+    <div class="quest-top">
+      <div class="quest-check ${checkClass}"></div>
+      <div class="quest-body">
+        <div class="quest-name">${item?.name || '-'}</div>
+        <div class="quest-tags">${catTag}${typeTag}</div>
+        <div class="quest-pts">+${pts} pts</div>
+        <div class="quest-meta">
+          ${p.due_date ? `📅 期日: ${new Date(p.due_date).toLocaleDateString('ja-JP')}` : ''}
+          ${isApproved && p.checked_by ? `<span class="approved-by">✓ ${p.checked_by} が承認</span>` : ''}
+          ${isRejected ? `<span style="color:var(--red);">✗ 再チャレンジしよう</span>` : ''}
+        </div>
+        ${praiseArea}
+        ${noteArea}
+      </div>
+    </div>
+    ${!isApproved ? `<button class="self-check-btn" ${btnDisabled} onclick="selfCheck(${p.id},${pts})">${btnText}</button>` : ''}
+  </div>`;
+}
+
+async function selfCheck(progressId, pts) {
+  const {error} = await sb.from('ob_progress').update({
+    self_checked: true, self_checked_at: new Date().toISOString(), rejected: false
+  }).eq('id', progressId);
+  if (error) { showToast('エラーが発生しました'); return; }
+  showCelebration(pts);
+  await loadQuestData();
+}
+
+async function saveNote(progressId, text) {
+  await sb.from('ob_progress').update({note_text: text}).eq('id', progressId);
+  showToast('メモを保存しました');
+}
+
+// ===== ADMIN =====
+async function loadAdminData() {
+  await Promise.all([loadApprovals(), loadAdminStaffs()]);
+  checkAdminAlerts();
+}
+
+async function loadApprovals() {
+  const el = document.getElementById('approval-list');
+  const {data} = await sb.from('ob_progress')
+    .select('*, ob_staff(name,store), ob_check_items(name,phase,type)')
+    .eq('self_checked', true)
+    .eq('is_approved', false)
+    .eq('rejected', false)
+    .order('self_checked_at');
+  if (!data || !data.length) {
+    el.innerHTML = '<div class="empty" style="padding:20px;">✅ 承認待ちはありません</div>';
+    return;
+  }
+  el.innerHTML = data.map(p => {
+    const pts = PHASE_PTS[p.ob_check_items?.phase||1]||10;
+    return `<div class="approval-card">
+      <div class="approval-card-top">
+        <div>
+          <div class="apv-staff">${p.ob_staff?.name} <span style="color:var(--text-muted);font-size:11px;">${p.ob_staff?.store}</span></div>
+          <div class="apv-quest">${p.ob_check_items?.name}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${PHASE_LABELS[p.ob_check_items?.phase||1]}</div>
+        </div>
+        <div class="apv-pts">+${pts}pts</div>
+      </div>
+      <textarea class="praise-input" id="praise-${p.id}" placeholder="称賛メッセージ（任意）✨"></textarea>
+      <div class="approval-actions">
+        <button class="apv-btn apv-reject" onclick="rejectQuest(${p.id})">✗ 差し戻し</button>
+        <button class="apv-btn apv-approve" onclick="approveQuest(${p.id},'${p.ob_staff?.name}')">✓ 承認する</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function approveQuest(progressId, staffName) {
+  const praise = document.getElementById('praise-' + progressId)?.value.trim() || null;
+  const approverName = prompt('承認者名を入力してください：') || '管理者';
+  await sb.from('ob_progress').update({
+    is_approved: true, is_done: true,
+    checked_by: approverName, checked_at: new Date().toISOString(),
+    praise_message: praise
+  }).eq('id', progressId);
+  showToast(`✓ 承認しました！`);
+  await loadAdminData();
+}
+
+async function rejectQuest(progressId) {
+  await sb.from('ob_progress').update({
+    self_checked: false, rejected: true, self_checked_at: null
+  }).eq('id', progressId);
+  showToast('差し戻しました');
+  await loadAdminData();
+}
+
+async function loadAdminStaffs() {
+  const el = document.getElementById('admin-staff-list');
+  const {data: prog} = await sb.from('ob_progress').select('staff_id,is_approved,ob_check_items(phase)');
+  const scores = {}; const totals = {};
+  (prog||[]).forEach(p => {
+    const sid = p.staff_id;
+    if (!totals[sid]) totals[sid] = 0;
+    totals[sid]++;
+    if (!p.is_approved) return;
+    if (!scores[sid]) scores[sid] = 0;
+    scores[sid] += PHASE_PTS[p.ob_check_items?.phase||1]||10;
+  });
+  const maxTotal = Math.max(...Object.values(totals).map(t => t * 15), 1);
+  el.innerHTML = (staffCache || []).map(s => {
+    const score = scores[s.id]||0;
+    const total = totals[s.id]||1;
+    const pct = Math.round(score / (total * 15) * 100);
+    return `<div class="admin-staff-card" onclick="openQuest(${s.id}); showScreen('scr-quest');">
+      <div class="asc-top">
+        <div class="asc-name">${s.name}</div>
+        <div class="asc-store">${s.store}</div>
+        <div class="asc-score">${score}<span style="font-size:11px;color:var(--text-muted);">pts</span></div>
+      </div>
+      <div class="asc-bar-wrap">
+        <div style="font-size:10px;color:var(--text-muted);">完了率 ${pct}%</div>
+        <div class="asc-bar-track"><div class="asc-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">スタッフがいません</div>';
+}
+
+async function checkAdminAlerts() {
+  const {count} = await sb.from('ob_progress')
+    .select('id',{count:'exact',head:true})
+    .eq('self_checked',true).eq('is_approved',false).eq('rejected',false);
+  const dot = document.getElementById('admin-alert-dot');
+  if (count > 0) { dot.style.display='inline-block'; }
+  else { dot.style.display='none'; }
+}
+
+// ===== SAVE STAFF =====
+async function saveStaff() {
+  const name = document.getElementById('ns-name').value.trim();
+  const role = document.getElementById('ns-role').value;
+  const store = document.getElementById('ns-store').value;
+  const join_date = document.getElementById('ns-date').value;
+  const note = document.getElementById('ns-note').value.trim();
+  if (!name || !join_date) { alert('スタッフ名と入社日は必須です'); return; }
+  const {data, error} = await sb.from('ob_staff').insert({name,role,store,join_date,note:note||null}).select().single();
+  if (error) { alert('エラー: '+error.message); return; }
+  const items = checkItemsCache.filter(i=>i.is_active);
+  if (items.length) {
+    await sb.from('ob_progress').insert(items.map(item => ({
+      staff_id: data.id, item_id: item.id,
+      is_done: false, is_approved: false, self_checked: false, rejected: false,
+      due_date: calcDueDate(join_date, item.phase)
+    })));
+  }
+  document.getElementById('ns-name').value='';
+  document.getElementById('ns-note').value='';
+  await loadStaffList();
+  showToast(`${name} を追加しました`);
+  await loadAdminData();
+}
+
+function calcDueDate(joinDate, phase) {
+  const d = new Date(joinDate);
+  d.setDate(d.getDate() + [0,14,30,60,90,240,90][phase]||30);
+  return d.toISOString().split('T')[0];
+}
+
+// ===== CELEBRATION =====
+function showCelebration(pts) {
+  document.getElementById('cel-pts').textContent = `+${pts} pts`;
+  document.getElementById('cel-title').textContent = 'クエスト申請完了！';
+  document.getElementById('cel-desc').textContent = '管理者が確認・承認するとポイントが正式に加算されます ✨';
+  document.getElementById('cel-emoji').textContent = ['🎉','⭐','✨','🌟','💫'][Math.floor(Math.random()*5)];
+  document.getElementById('celebration').classList.add('show');
+  spawnConfetti();
+}
+
+function closeCelebration() {
+  document.getElementById('celebration').classList.remove('show');
+}
+
+function spawnConfetti() {
+  const colors = ['#C49A6C','#4ABA7A','#5A9BD4','#E07B2A','#9B7AE0','#fff'];
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `left:${Math.random()*100}vw;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;animation-delay:${Math.random()*0.5}s;animation-duration:${1+Math.random()*1}s;border-radius:${Math.random()>0.5?'50%':'2px'}`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 2000);
+  }
+}
+
+// ===== MODAL =====
+function closeModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ===== BOOT =====
+init();
+</script>
+</body>
+</html>
