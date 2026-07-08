@@ -932,7 +932,7 @@ async function loadSalesList(){
         (ts?'<div style="font-size:9px;color:#bbb">入力:'+ts+'</div>':'')+
       '</div>'+
       '<span class="i-am" style="color:#1D9E75">'+fmt(s.claim_amount)+'</span>'+
-      '<button class="del-btn" onclick="exportInvoicePDF(''+s.month+'','+s.sales_amount+','+s.commission_rate+','+s.claim_amount+',''+(s.memo||'')+'')">🧾</button>'+
+      '<button class="del-btn" onclick="exportInvoicePDF(\''+s.month+'\','+s.sales_amount+','+s.commission_rate+','+s.claim_amount+',\''+(s.memo||'')+'\')">🧾</button>'+
     '</div>';
   }).join('');
 }
