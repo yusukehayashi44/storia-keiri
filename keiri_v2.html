@@ -153,49 +153,113 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
 
   <div class="screen active" id="s-sc-input">
-    <div class="notice">📷 レシートを撮影して添付できます。データはSupabase Authで保護されており、自分以外は閲覧できません。</div>
+    <div class="notice" style="line-height:1.8">
+      📋 <strong>電子帳簿保存法に対応した経費記録</strong><br>
+      入力した日時は自動で記録されます。レシートの写真も添付できます。<br>
+      <span style="font-size:11px;color:#0F6E56">紙のレシートは7年間保管してください。</span>
+    </div>
     <div class="card">
+
+      <!-- レシート撮影 -->
       <div class="upload-box" onclick="document.getElementById('s-file').click()">
         <input type="file" id="s-file" accept="image/*" capture="environment" style="display:none" onchange="prevFile(this)">
-        📸 レシートをタップして撮影
+        📸 レシートをタップして撮影・添付
+        <div style="font-size:10px;color:#aaa;margin-top:4px">税務調査のとき証拠として使えます</div>
         <div id="s-thumb"></div>
       </div>
-      <div class="field"><label>日付</label><input type="date" id="s-dt"></div>
 
-      <div class="field"><label>カテゴリー</label>
+      <!-- 日付 -->
+      <div class="field">
+        <label>日付 <span style="font-size:10px;color:#888;font-weight:400">※支出した日付を入力</span></label>
+        <input type="date" id="s-dt">
+      </div>
+
+      <!-- 科目（カテゴリー） -->
+      <div class="field">
+        <label>科目（カテゴリー）<span id="s-cat-help-btn" onclick="toggleCatHelp()" style="font-size:10px;color:#1D9E75;margin-left:8px;cursor:pointer;font-weight:400">❓ 科目の選び方</span></label>
         <select id="s-cat" onchange="updateBuntanHint()">
           <option value="">選択してください</option>
           <option value="仕入高">仕入高（シャンプー・カラー剤・パーマ液など）</option>
           <option value="旅費交通費">旅費交通費（電車・タクシー・新幹線など）</option>
-          <option value="通信費" data-buntan="true">通信費 ⚠️按分（スマホ・切手・インターネット）</option>
+          <option value="通信費">通信費 ⚠️按分必要（スマホ・切手・インターネット）</option>
           <option value="接待交際費">接待交際費（取引先との食事・手土産など）</option>
           <option value="会議費">会議費（打合せカフェ・会議室代など）</option>
           <option value="消耗品費">消耗品費（文房具・ウィッグ・ハサミ・コーム・ドライヤーなど）</option>
-          <option value="地代家賃" data-buntan="true">地代家賃 ⚠️按分（在住の家賃・事業使用分のみ）</option>
-          <option value="保険料">保険料（個人で加入している医療保険など）</option>
+          <option value="地代家賃">地代家賃 ⚠️按分必要（在住の家賃・事業使用分のみ）</option>
+          <option value="保険料">保険料 ⚠️注意あり（事業用保険のみ）</option>
           <option value="支払手数料">支払手数料（振込手数料・決済手数料など）</option>
-          <option value="研修費">研修費（セミナー参加費・技術講習など）</option>
+          <option value="研修費">研修費 ⚠️注意あり（事業関連のセミナーのみ）</option>
           <option value="新聞図書費">新聞図書費（書籍・新聞など）</option>
           <option value="雑費">雑費（上記に当てはまらないもの）</option>
         </select>
+        <!-- 科目ヘルプ -->
+        <div id="s-cat-help" style="display:none;background:#F8FAFC;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:11px;color:#334155;line-height:1.8">
+          <strong style="color:#1D9E75">📚 科目の選び方ガイド</strong><br>
+          <b>仕入高</b>：施術に使う材料費。シャンプー・カラー剤など。<br>
+          <b>旅費交通費</b>：仕事のための移動費。ICカードの履歴が証明になります。<br>
+          <b>通信費</b>：スマホ・インターネット代。プライベートとの<b>按分が必要</b>です。<br>
+          <b>接待交際費</b>：取引先との食事など。<b>誰と・どこで・何人</b>の記録が必要です。<br>
+          <b>消耗品費</b>：ハサミ・コーム・ドライヤーなど道具類。高額なものは減価償却の対象になる場合あり。<br>
+          <b>地代家賃</b>：自宅で仕事をする場合の家賃の一部。<b>按分が必要</b>です。<br>
+          <b>保険料</b>：<span style="color:#e53935">個人の医療保険・生命保険は経費にできません。</span>事業用賠償保険などが対象。<br>
+          <b>研修費</b>：技術セミナー・講習など。<span style="color:#e53935">マインド系セミナーは事業との関連が問われます。</span><br>
+          <b>雑費</b>：どの科目にも当てはまらないもの。多用しすぎると税務調査で指摘されやすいです。
+        </div>
       </div>
-      <div id="s-buntan-box" style="display:none;background:#FFFBEB;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;line-height:1.7">
-        ⚠️ <strong>この科目は按分が必要です。</strong>事業で使用した割合のみ計上できます。<br>
-        例）スマホを仕事で50%使用 → 50%を選択
+
+      <!-- 科目別の注意・追加項目 -->
+      <div id="s-cat-notice" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.8"></div>
+
+      <!-- 接待交際費：追加項目 -->
+      <div id="s-settai-box" style="display:none">
+        <div style="background:#EFF6FF;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#1e3a8a;line-height:1.8">
+          💡 <strong>接待交際費の記録ルール（税務調査で必ず確認されます）</strong><br>
+          誰と・どこで・何人で・何の目的で使ったかを記録してください。
+        </div>
+        <div class="field"><label>行った先（店名・場所）</label><input type="text" id="s-settai-place" placeholder="例：〇〇レストラン 渋谷店"></div>
+        <div class="field"><label>参加人数</label><input type="number" id="s-settai-count" placeholder="例：3" inputmode="numeric" min="1"></div>
+        <div class="field"><label>目的・相手</label><input type="text" id="s-settai-purpose" placeholder="例：取引先の〇〇様との打合せ後の食事"></div>
       </div>
-      <div class="field" id="s-buntan-field" style="display:none">
-        <label>按分率（事業使用割合）</label>
-        <select id="s-buntan">
-          <option value="1.0">100%（全額計上）</option>
-          <option value="0.7">70%</option>
-          <option value="0.5">50%（半分を計上）</option>
-          <option value="0.3">30%</option>
-          <option value="0.2">20%</option>
-        </select>
+
+      <!-- 按分ボックス（通信費・家賃） -->
+      <div id="s-buntan-box" style="display:none;background:#FFFBEB;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#92400e;line-height:1.8">
+        ⚠️ <strong>この科目は「按分」が必要です</strong><br>
+        プライベートと仕事の両方で使うものは、仕事で使った分だけ経費にできます。<br>
+        例）スマホを仕事で50%使う → 按分率50%を選択 → 月8,000円なら4,000円が経費
       </div>
-      <div class="field"><label>金額（円）※按分前の実際の金額を入力</label><input type="number" id="s-amt" placeholder="例：8000" inputmode="numeric"></div>
+      <div id="s-buntan-field" style="display:none">
+        <div class="field">
+          <label>按分率（仕事で使う割合）</label>
+          <select id="s-buntan" onchange="updateBuntanPreview()">
+            <option value="1.0">100%（全額計上）</option>
+            <option value="0.7">70%</option>
+            <option value="0.5">50%（半分を計上）</option>
+            <option value="0.3">30%</option>
+            <option value="0.2">20%</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>按分の根拠（自由記述）<span style="font-size:10px;color:#888;font-weight:400">　税務調査で説明できるよう記入を推奨</span></label>
+          <textarea id="s-buntan-reason" placeholder="例：1日の業務時間8時間のうち、仕事でのスマホ使用は約4時間（50%）。主にお客様との連絡・予約管理・技術調査に使用。" style="min-height:60px"></textarea>
+        </div>
+      </div>
+
+      <!-- 金額 -->
+      <div class="field">
+        <label>金額（円）<span id="s-amt-note" style="font-size:10px;color:#888;font-weight:400">　按分前の実際の金額を入力</span></label>
+        <input type="number" id="s-amt" placeholder="例：8000" inputmode="numeric" oninput="updateBuntanPreview()">
+      </div>
       <div id="s-buntan-preview" style="display:none;background:#E1F5EE;border-radius:6px;padding:6px 12px;font-size:12px;color:#0F6E56;margin-bottom:8px"></div>
-      <div class="field"><label>支払方法</label>
+
+      <!-- 支払先 -->
+      <div class="field">
+        <label>支払先<span style="font-size:10px;color:#888;font-weight:400">　店名・会社名など（電子帳簿保存法で記録推奨）</span></label>
+        <input type="text" id="s-payee" placeholder="例：〇〇美容材料株式会社 / セブンイレブン〇〇店">
+      </div>
+
+      <!-- 支払方法 -->
+      <div class="field">
+        <label>支払方法</label>
         <select id="s-pay">
           <option value="現金">現金</option>
           <option value="カード">カード</option>
@@ -203,7 +267,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
           <option value="振込">振込</option>
         </select>
       </div>
-      <div class="field"><label>メモ</label><input type="text" id="s-memo" placeholder="例：カット用シザー購入"></div>
+
+      <!-- メモ -->
+      <div class="field">
+        <label>メモ・内容</label>
+        <input type="text" id="s-memo" placeholder="例：カット用シザー購入（〇〇ブランド）">
+      </div>
+
       <button class="btn-p" onclick="addExpense()">💾 保存する</button>
     </div>
   </div>
@@ -520,12 +590,47 @@ function prevFile(input){
     r.readAsDataURL(input.files[0]);
   }
 }
+function toggleCatHelp(){
+  const el=Q('s-cat-help');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
 function updateBuntanHint(){
   const cat=Q('s-cat').value;
   const needBuntan=['通信費','地代家賃'].includes(cat);
+  const isSettai=cat==='接待交際費';
+  const notice=Q('s-cat-notice');
+
+  // 按分ボックス
   Q('s-buntan-box').style.display=needBuntan?'block':'none';
   Q('s-buntan-field').style.display=needBuntan?'block':'none';
-  if(!needBuntan)Q('s-buntan').value='1.0';
+  if(!needBuntan){Q('s-buntan').value='1.0';}
+
+  // 接待交際費追加項目
+  Q('s-settai-box').style.display=isSettai?'block':'none';
+
+  // 科目別注意メッセージ
+  const notices={
+    '保険料': {bg:'#FFF1F2',border:'#f87171',color:'#991b1b',
+      text:'⚠️ <strong>保険料の注意</strong><br>個人で加入している医療保険・生命保険は経費になりません。<br>経費になるのは事業用の賠償保険・損害保険などです。<br>個人保険は確定申告時に「生命保険料控除」として別途申告します。'},
+    '研修費': {bg:'#FFFBEB',border:'#fbbf24',color:'#92400e',
+      text:'⚠️ <strong>研修費の注意</strong><br>美容技術・接客・ビジネスに直接関連するセミナーのみ経費になります。<br>マインド系・自己啓発系は事業との関連が問われる場合があります。<br>参加証・領収書・内容のメモを必ず保管してください。'},
+    '通信費': {bg:'#FFFBEB',border:'#fbbf24',color:'#92400e',
+      text:'⚠️ <strong>通信費の注意</strong><br>スマホ・インターネット代は全額経費にできません。仕事で使う割合（按分率）のみ計上できます。<br>「1日8時間のうち仕事で4時間使う」など客観的な根拠を下の欄に記入してください。'},
+    '地代家賃': {bg:'#FFFBEB',border:'#fbbf24',color:'#92400e',
+      text:'⚠️ <strong>地代家賃の注意</strong><br>自宅の家賃を全額経費にすることはできません。仕事で使う部屋の面積割合で按分します。<br>例）30㎡の部屋のうち6㎡を仕事場として使う → 20%を経費計上'},
+    '雑費': {bg:'#F8FAFC',border:'#94a3b8',color:'#475569',
+      text:'💡 <strong>雑費について</strong><br>どの科目にも当てはまらない経費です。<br>多用すると税務調査で説明を求められやすくなります。できるだけ他の科目に分類しましょう。'},
+  };
+  if(notices[cat]){
+    const n=notices[cat];
+    notice.style.display='block';
+    notice.style.background=n.bg;
+    notice.style.border=`1px solid ${n.border}`;
+    notice.style.color=n.color;
+    notice.innerHTML=n.text;
+  }else{
+    notice.style.display='none';
+  }
   updateBuntanPreview();
 }
 function updateBuntanPreview(){
@@ -541,27 +646,39 @@ function updateBuntanPreview(){
   }
 }
 async function addExpense(){
-  const dt=Q('s-dt').value, origAmt=parseInt(Q('s-amt').value), cat=Q('s-cat').value,
-        pay=Q('s-pay').value, memo=Q('s-memo').value;
+  const dt=Q('s-dt').value, origAmt=parseInt(Q('s-amt').value), cat=Q('s-cat').value;
+  const pay=Q('s-pay').value, memo=Q('s-memo').value;
+  const payee=Q('s-payee')?.value||'';
   const buntanRate=parseFloat(Q('s-buntan')?.value)||1.0;
+  const buntanReason=Q('s-buntan-reason')?.value||'';
   const amt=Math.round(origAmt*buntanRate);
+  // 接待交際費の追加情報
+  const settaiPlace=Q('s-settai-place')?.value||'';
+  const settaiCount=Q('s-settai-count')?.value||'';
+  const settaiPurpose=Q('s-settai-purpose')?.value||'';
   if(!dt||!origAmt||!cat){alert('日付・金額・科目は必須です');return}
+  if(cat==='接待交際費'&&!settaiPlace){alert('接待交際費は行った先を入力してください');return}
   const now=new Date().toISOString();
+  // メモに接待情報を自動付加
+  let fullMemo=memo;
+  if(cat==='接待交際費'&&settaiPlace){
+    fullMemo=`${memo?memo+' ／ ':''}行先:${settaiPlace} 参加${settaiCount||'?'}人 ${settaiPurpose}`.trim();
+  }
   setSync('s','ing');
   const {error}=await sb.from('expenses').insert({
     user_id:me.id, date:dt, amount:amt, orig_amount:origAmt,
     buntan_rate:buntanRate, category:cat,
-    payment:pay, memo, receipt_b64:receiptB64, status:'pending',
+    payment:pay, memo:fullMemo, payee,
+    buntan_reason:buntanReason,
+    receipt_b64:receiptB64, status:'pending',
     input_at:now
   });
   if(error){alert('保存エラー：'+error.message);setSync('s','done');return}
   receiptB64=null;
   Q('s-thumb').innerHTML='';Q('s-file').value='';
-  Q('s-amt').value='';Q('s-cat').value='';Q('s-memo').value='';
+  ['s-amt','s-cat','s-memo','s-payee','s-buntan-reason','s-settai-place','s-settai-count','s-settai-purpose'].forEach(id=>{const el=Q(id);if(el)el.value='';});
   if(Q('s-buntan'))Q('s-buntan').value='1.0';
-  Q('s-buntan-box').style.display='none';
-  Q('s-buntan-field').style.display='none';
-  Q('s-buntan-preview').style.display='none';
+  ['s-buntan-box','s-buntan-field','s-buntan-preview','s-settai-box','s-cat-notice'].forEach(id=>{const el=Q(id);if(el)el.style.display='none';});
   setSync('s','done');
   popSels(['s-lm','s-sm']);
   staffTab('list',1);
@@ -587,8 +704,10 @@ async function loadStaffList(){
       <span class="tag ${catMap[e.category]||'to'}">${e.category}</span>
       <div style="flex:1;min-width:0">
         <div class="i-nm">${e.memo||'（メモなし）'}</div>
-        ${e.buntan_rate&&e.buntan_rate<1?`<div style="font-size:9px;color:#888">按分${Math.round(e.buntan_rate*100)}%（元:${fmt(e.orig_amount||e.amount)}）</div>`:''}
-        ${e.input_at?`<div style="font-size:9px;color:#bbb">入力:${new Date(e.input_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>`:''}
+        ${e.payee?`<div style="font-size:10px;color:#555;margin-top:1px">🏪 ${e.payee}</div>`:''}
+        ${e.buntan_rate&&e.buntan_rate<1?`<div style="font-size:9px;color:#b45309">按分${Math.round(e.buntan_rate*100)}%（元:${fmt(e.orig_amount||e.amount)}）</div>`:''}
+        ${e.buntan_reason?`<div style="font-size:9px;color:#888">根拠:${e.buntan_reason.slice(0,30)}…</div>`:''}
+        ${e.input_at?`<div style="font-size:9px;color:#bbb">⏱ ${new Date(e.input_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>`:''}
       </div>
       <span class="i-am">${fmt(e.amount)}</span>
       <span class="sbadge ${e.status==='ok'?'ok':'pnd'}">${e.status==='ok'?'済':'未'}</span>
@@ -942,7 +1061,9 @@ async function exportInvoicePDF(month,salesAmt,rate,claimAmt,memo){
   const staffName = myProfile?.name||me.email;
   const today = new Date();
   const dateStr = today.getFullYear()+"年"+String(today.getMonth()+1).padStart(2,"0")+"月"+String(today.getDate()).padStart(2,"0")+"日";
-  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>body{font-family:"Hiragino Sans",sans-serif;padding:40px;max-width:600px;margin:0 auto}h1{font-size:24px;text-align:center;margin-bottom:30px;border-bottom:2px solid #1D9E75;padding-bottom:10px;color:#1D9E75}.row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#1D9E75;color:#fff;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #eee}.tot td{font-weight:bold;background:#f0fdf4;font-size:16px}.ft{margin-top:30px;font-size:12px;color:#888;text-align:center}</style></head><body><h1>請　求　書</h1><div class="row"><span>発行日</span><span>${dateStr}</span></div><div class="row"><span>請求者</span><span>${staffName}</span></div><div class="row"><span>対象月</span><span>${month.replace("-","年")}月分</span></div><div class="row"><span>請求先</span><span>Hair Beauty Storia 御中</span></div><table><tr><th>項目</th><th>金額</th></tr><tr><td>美容師業務 売上高</td><td>${fmt(salesAmt)}</td></tr><tr><td>歩合率</td><td>${rate}%</td></tr>${memo?`<tr><td>備考</td><td>${memo}</td></tr>`:"" }<tr class="tot"><td>請求金額</td><td>${fmt(claimAmt)}</td></tr></table><div class="ft">Hair Beauty Storia ダブルワーク制度</div></body></html>`;
+  const timeStr = String(today.getHours()).padStart(2,"0")+":"+String(today.getMinutes()).padStart(2,"0");
+  const issuedAt = dateStr+" "+timeStr+"発行";
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>body{font-family:"Hiragino Sans",sans-serif;padding:40px;max-width:600px;margin:0 auto}h1{font-size:24px;text-align:center;margin-bottom:30px;border-bottom:2px solid #1D9E75;padding-bottom:10px;color:#1D9E75}.row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#1D9E75;color:#fff;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #eee}.tot td{font-weight:bold;background:#f0fdf4;font-size:16px}.ft{margin-top:30px;font-size:12px;color:#888;text-align:center}</style></head><body><h1>請　求　書</h1><div class="row"><span>発行日時</span><span>${issuedAt}</span></div><div class="row"><span>請求者</span><span>${staffName}</span></div><div class="row"><span>対象月</span><span>${month.replace("-","年")}月分</span></div><div class="row"><span>請求先</span><span>Hair Beauty Storia 御中</span></div><table><tr><th>項目</th><th>金額</th></tr><tr><td>美容師業務 売上高</td><td>${fmt(salesAmt)}</td></tr><tr><td>歩合率</td><td>${rate}%</td></tr>${memo?`<tr><td>備考</td><td>${memo}</td></tr>`:"" }<tr class="tot"><td>請求金額</td><td>${fmt(claimAmt)}</td></tr></table><div class="ft">Hair Beauty Storia ダブルワーク制度</div></body></html>`;
   const w=window.open("","_blank");
   w.document.write(html);
   w.document.close();
