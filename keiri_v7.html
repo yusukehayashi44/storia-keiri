@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>経費管理システム | Hair Beauty Storia</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+.wrap{max-width:480px;margin:0 auto;padding:0 0 80px}
+#setup{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 16px;font-size:13px}
+#setup summary{cursor:pointer;color:#1D9E75;font-weight:500}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.setup-grid input{border:1px solid #ddd;border-radius:6px;padding:7px 10px;font-size:12px;font-family:monospace;width:100%}
+.setup-grid button{background:#1D9E75;color:#fff;border:none;border-radius:6px;padding:7px;font-size:12px;cursor:pointer}
+/* ─── ログイン ─── */
+#login-screen{padding:40px 20px}
+.logo{text-align:center;margin-bottom:28px}
+.logo-icon{width:64px;height:64px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:30px}
+.logo-title{font-size:20px;font-weight:700;margin-bottom:4px}
+.logo-sub{font-size:13px;color:#888}
+.secure-badge{display:inline-flex;align-items:center;gap:5px;background:#E1F5EE;color:#0F6E56;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:500;margin-top:8px}
+/* ─── 共通カード・フォーム ─── */
+.card{background:#fff;border-radius:12px;padding:18px;margin-bottom:12px}
+.field{margin-bottom:14px}
+.field label{font-size:12px;color:#666;display:block;margin-bottom:5px;font-weight:500}
+.field input,.field select,.field textarea{width:100%;border:1px solid #e0e0e0;border-radius:8px;padding:10px 12px;font-size:15px;font-family:inherit;background:#fff;color:#1a1a1a;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#1D9E75}
+.field textarea{resize:vertical;min-height:70px}
+.btn-p{width:100%;background:#1D9E75;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-p:active{background:#0F6E56}
+.btn-o{width:100%;background:#fff;color:#1D9E75;border:1.5px solid #1D9E75;border-radius:8px;padding:11px;font-size:14px;font-weight:500;cursor:pointer}
+.err{color:#e53935;font-size:13px;margin-top:8px;display:none;padding:8px 12px;background:#fff5f5;border-radius:6px}
+/* ─── ヘッダー ─── */
+.header{background:#fff;border-bottom:1px solid #eee;padding:0 16px;display:flex;align-items:center;height:52px;position:sticky;top:0;z-index:20}
+.h-title{font-size:15px;font-weight:700;flex:1}
+.h-sub{font-size:11px;color:#888;margin-top:1px;display:flex;align-items:center;gap:4px}
+.sdot{width:6px;height:6px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.sdot.ing{background:#f59e0b;animation:bl .8s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.logout-btn{border:none;background:none;color:#aaa;font-size:13px;cursor:pointer;padding:4px 8px}
+/* ─── タブバー ─── */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid #eee;display:flex;height:58px;z-index:20}
+.tabbar button{flex:1;border:none;background:none;font-size:10px;color:#bbb;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 0;transition:color .15s}
+.tabbar button.active{color:#1D9E75}
+.tab-icon{font-size:22px;line-height:1}
+/* ─── 画面 ─── */
+.screen{display:none;padding:14px 16px}.screen.active{display:block}
+/* ─── 統計 ─── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat-row-2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.stat{background:#fff;border-radius:10px;padding:12px 10px;text-align:center}
+.stat-n{font-size:20px;font-weight:700;line-height:1.2}
+.stat-l{font-size:10px;color:#888;margin-top:3px}
+.green{color:#1D9E75}.amber{color:#b45309}.red{color:#dc2626}
+/* ─── タグ ─── */
+.tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;white-space:nowrap}
+.tm{background:#E1F5EE;color:#0F6E56}
+.tf{background:#EFF6FF;color:#1d4ed8}
+.tk{background:#FFFBEB;color:#92400e}
+.tt{background:#FFF1F2;color:#9f1239}
+.te{background:#F0FDF4;color:#166534}
+.ts{background:#F5F5F4;color:#57534e}
+.to{background:#f3f4f6;color:#6b7280}
+.t-admin{background:#EDE9FE;color:#5b21b6}
+/* ─── リスト ─── */
+.item-row{display:flex;align-items:center;gap:7px;padding:11px 0;border-bottom:1px solid #f0f0f0}
+.item-row:last-child{border-bottom:none}
+.i-dt{font-size:11px;color:#bbb;min-width:36px}
+.i-nm{flex:1;font-size:13px;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.i-am{font-size:14px;font-weight:700;color:#b45309;min-width:58px;text-align:right}
+.sbadge{font-size:10px;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.ok{background:#E1F5EE;color:#0F6E56}
+.pnd{background:#FFFBEB;color:#92400e}
+.del-btn{border:none;background:none;color:#ddd;font-size:18px;cursor:pointer;padding:2px 4px;line-height:1}
+/* ─── その他 ─── */
+.sec-lbl{font-size:11px;font-weight:700;color:#aaa;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase}
+.notice{background:#E1F5EE;border-radius:8px;padding:10px 14px;font-size:12px;color:#065f46;margin-bottom:12px;line-height:1.6}
+.notice-warn{background:#FFFBEB;border-radius:8px;padding:10px 14px;font-size:12px;color:#78350f;margin-bottom:12px;line-height:1.6}
+.notice-sec{background:#EDE9FE;border-radius:8px;padding:10px 14px;font-size:12px;color:#4c1d95;margin-bottom:12px;line-height:1.6}
+.msg-card{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.from-admin{border-left:3px solid #1D9E75}
+.from-staff{border-left:3px solid #93c5fd}
+.upload-box{border:2px dashed #d1d5db;border-radius:8px;padding:18px 12px;text-align:center;color:#9ca3af;font-size:13px;cursor:pointer;margin-bottom:14px;transition:all .15s;background:#fafafa}
+.upload-box:active,.upload-box:hover{border-color:#1D9E75;background:#f0fdf8}
+.thumb{max-width:90px;max-height:70px;border-radius:6px;margin-top:8px}
+.msel{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.msel label{font-size:13px;color:#666;font-weight:500}
+.msel select{border:1px solid #e0e0e0;border-radius:8px;padding:6px 10px;font-size:14px;background:#fff;-webkit-appearance:none}
+.prog-wrap{flex:1;margin:0 8px}
+.prog-bar{height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:#1D9E75;border-radius:3px;transition:width .3s}
+.cat-row{display:flex;align-items:center;gap:6px;padding:9px 0;border-bottom:1px solid #f5f5f5}
+.cat-row:last-child{border-bottom:none}
+.empty{text-align:center;padding:32px 16px;color:#ccc;font-size:14px}
+.member-card{background:#fff;border-radius:10px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.avatar{width:40px;height:40px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#0F6E56;flex-shrink:0}
+.sec-row{background:#f9fafb;border-radius:8px;padding:9px 14px;font-size:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:12px;font-size:14px;color:#888}
+.loading-overlay.show{display:flex}
+.spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#1D9E75;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <div class="spinner"></div>
+  <span id="loader-msg">接続中...</span>
+</div>
+
+<div class="wrap">
+
+<!-- Supabase設定 -->
+<details id="setup">
+  <summary>⚙️ Supabase接続設定（管理者が初回のみ入力）</summary>
+  <div class="setup-grid">
+    <input id="cfg-url" placeholder="Project URL (https://xxx.supabase.co)">
+    <input id="cfg-key" placeholder="Anon Public Key">
+  </div>
+  <div class="setup-grid" style="margin-top:6px">
+    <button onclick="saveConfig()">保存する</button>
+    <span id="cfg-msg" style="font-size:12px;color:#888;align-self:center"></span>
+  </div>
+</details>
+
+<!-- ─── ログイン ─── -->
+<div id="login-screen">
+  <div class="logo">
+    <div class="logo-icon">🌿</div>
+    <div class="logo-title">経費管理システム</div>
+    <div class="logo-sub">Hair Beauty Storia</div>
+    <div><span class="secure-badge">🔒 Supabase Auth 完全認証対応</span></div>
+  </div>
+  <div class="card">
+    <div class="field"><label>メールアドレス</label><input type="email" id="l-email" placeholder="例：ayumi@storia.jp" autocomplete="email"></div>
+    <div class="field"><label>パスワード</label><input type="password" id="l-pw" placeholder="パスワード" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn-p" onclick="doLogin()">ログイン</button>
+    <div id="l-err" class="err"></div>
+  </div>
+  <div style="font-size:12px;color:#aaa;text-align:center;margin-top:4px">パスワードを忘れた場合は総務にお問い合わせください</div>
+</div>
+
+<!-- ─── スタッフ画面 ─── -->
+<div id="staff-app" style="display:none">
+  <div class="header">
+    <div>
+      <div class="h-title" id="s-name-h"></div>
+      <div class="h-sub"><span class="sdot" id="s-sd"></span><span id="s-st">同期済み</span></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+  </div>
+
+  <div class="screen active" id="s-sc-input">
+    <div class="notice" style="line-height:1.8">
+      📋 <strong>電子帳簿保存法に対応した経費記録</strong><br>
+      入力した日時は自動で記録されます。レシートの写真も添付できます。<br>
+      <span style="font-size:11px;color:#0F6E56">紙のレシートは7年間保管してください。</span>
+    </div>
+    <div class="card">
+
+      <!-- レシート撮影 -->
+      <div class="upload-box" onclick="document.getElementById('s-file').click()">
+        <input type="file" id="s-file" accept="image/*" capture="environment" style="display:none" onchange="prevFile(this)">
+        📸 レシートをタップして撮影・添付
+        <div style="font-size:10px;color:#aaa;margin-top:4px">税務調査のとき証拠として使えます</div>
+        <div id="s-thumb"></div>
+      </div>
+
+      <!-- 日付 -->
+      <div class="field">
+        <label>日付 <span style="font-size:10px;color:#888;font-weight:400">※支出した日付を入力</span></label>
+        <input type="date" id="s-dt">
+      </div>
+
+      <!-- 科目（カテゴリー） -->
+      <div class="field">
+        <label>科目（カテゴリー）<span id="s-cat-help-btn" onclick="toggleCatHelp()" style="font-size:10px;color:#1D9E75;margin-left:8px;cursor:pointer;font-weight:400">❓ 科目の選び方</span></label>
+        <select id="s-cat" onchange="updateBuntanHint()">
+          <option value="">選択してください</option>
+          <option value="仕入高">仕入高（シャンプー・カラー剤・パーマ液など）</option>
+          <option value="旅費交通費">旅費交通費（電車・タクシー・新幹線など）</option>
+          <option value="通信費">通信費 ⚠️按分必要（スマホ・切手・インターネット）</option>
+          <option value="接待交際費">接待交際費（取引先との食事・手土産など）</option>
+          <option value="会議費">会議費（打合せカフェ・会議室代など）</option>
+          <option value="消耗品費">消耗品費（文房具・ウィッグ・ハサミ・コーム・ドライヤーなど）</option>
+          <option value="地代家賃">地代家賃 ⚠️按分必要（在住の家賃・事業使用分のみ）</option>
+          <option value="保険料">保険料 ⚠️注意あり（事業用保険のみ）</option>
+          <option value="支払手数料">支払手数料（振込手数料・決済手数料など）</option>
+          <option value="研修費">研修費 ⚠️注意あり（事業関連のセミナーのみ）</option>
+          <option value="新聞図書費">新聞図書費（書籍・新聞など）</option>
+          <option value="雑費">雑費（上記に当てはまらないもの）</option>
+        </select>
+        <!-- 科目ヘルプ -->
+        <div id="s-cat-help" style="display:none;background:#F8FAFC;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:11px;color:#334155;line-height:1.8">
+          <strong style="color:#1D9E75">📚 科目の選び方ガイド</strong><br>
+          <b>仕入高</b>：施術に使う材料費。シャンプー・カラー剤など。<br>
+          <b>旅費交通費</b>：仕事のための移動費。ICカードの履歴が証明になります。<br>
+          <b>通信費</b>：スマホ・インターネット代。プライベートとの<b>按分が必要</b>です。<br>
+          <b>接待交際費</b>：取引先との食事など。<b>誰と・どこで・何人</b>の記録が必要です。<br>
+          <b>消耗品費</b>：ハサミ・コーム・ドライヤーなど道具類。高額なものは減価償却の対象になる場合あり。<br>
+          <b>地代家賃</b>：自宅で仕事をする場合の家賃の一部。<b>按分が必要</b>です。<br>
+          <b>保険料</b>：<span style="color:#e53935">個人の医療保険・生命保険は経費にできません。</span>事業用賠償保険などが対象。<br>
+          <b>研修費</b>：技術セミナー・講習など。<span style="color:#e53935">マインド系セミナーは事業との関連が問われます。</span><br>
+          <b>雑費</b>：どの科目にも当てはまらないもの。多用しすぎると税務調査で指摘されやすいです。
+        </div>
+      </div>
+
+      <!-- 科目別の注意・追加項目 -->
+      <div id="s-cat-notice" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.8"></div>
+
+      <!-- 接待交際費：追加項目 -->
+      <div id="s-settai-box" style="display:none">
+        <div style="background:#EFF6FF;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#1e3a8a;line-height:1.8">
+          💡 <strong>接待交際費の記録ルール（税務調査で必ず確認されます）</strong><br>
+          誰と・どこで・何人で・何の目的で使ったかを記録してください。
+        </div>
+        <div class="field"><label>行った先（店名・場所）</label><input type="text" id="s-settai-place" placeholder="例：〇〇レストラン 渋谷店"></div>
+        <div class="field"><label>参加人数</label><input type="number" id="s-settai-count" placeholder="例：3" inputmode="numeric" min="1"></div>
+        <div class="field"><label>目的・相手</label><input type="text" id="s-settai-purpose" placeholder="例：取引先の〇〇様との打合せ後の食事"></div>
+      </div>
+
+      <!-- 按分ボックス（通信費・家賃） -->
+      <div id="s-buntan-box" style="display:none;background:#FFFBEB;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#92400e;line-height:1.8">
+        ⚠️ <strong>この科目は「按分」が必要です</strong><br>
+        プライベートと仕事の両方で使うものは、仕事で使った分だけ経費にできます。<br>
+        例）スマホを仕事で50%使う → 按分率50%を選択 → 月8,000円なら4,000円が経費
+      </div>
+      <div id="s-buntan-field" style="display:none">
+        <div class="field">
+          <label>按分率（仕事で使う割合）</label>
+          <select id="s-buntan" onchange="updateBuntanPreview()">
+            <option value="1.0">100%（全額計上）</option>
+            <option value="0.7">70%</option>
+            <option value="0.5">50%（半分を計上）</option>
+            <option value="0.3">30%</option>
+            <option value="0.2">20%</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>按分の根拠（自由記述）<span style="font-size:10px;color:#888;font-weight:400">　税務調査で説明できるよう記入を推奨</span></label>
+          <textarea id="s-buntan-reason" placeholder="例：1日の業務時間8時間のうち、仕事でのスマホ使用は約4時間（50%）。主にお客様との連絡・予約管理・技術調査に使用。" style="min-height:60px"></textarea>
+        </div>
+      </div>
+
+      <!-- 金額 -->
+      <div class="field">
+        <label>金額（円）<span id="s-amt-note" style="font-size:10px;color:#888;font-weight:400">　按分前の実際の金額を入力</span></label>
+        <input type="number" id="s-amt" placeholder="例：8000" inputmode="numeric" oninput="updateBuntanPreview()">
+      </div>
+      <div id="s-buntan-preview" style="display:none;background:#E1F5EE;border-radius:6px;padding:6px 12px;font-size:12px;color:#0F6E56;margin-bottom:8px"></div>
+
+      <!-- 支払先 -->
+      <div class="field">
+        <label>支払先<span style="font-size:10px;color:#888;font-weight:400">　店名・会社名など（電子帳簿保存法で記録推奨）</span></label>
+        <input type="text" id="s-payee" placeholder="例：〇〇美容材料株式会社 / セブンイレブン〇〇店">
+      </div>
+
+      <!-- 支払方法 -->
+      <div class="field">
+        <label>支払方法</label>
+        <select id="s-pay">
+          <option value="現金">現金</option>
+          <option value="カード">カード</option>
+          <option value="電子マネー">電子マネー</option>
+          <option value="振込">振込</option>
+        </select>
+      </div>
+
+      <!-- メモ -->
+      <div class="field">
+        <label>メモ・内容</label>
+        <input type="text" id="s-memo" placeholder="例：カット用シザー購入（〇〇ブランド）">
+      </div>
+
+      <button class="btn-p" onclick="addExpense()">💾 保存する</button>
+    </div>
+  </div>
+
+  <div class="screen" id="s-sc-list">
+    <div class="msel">
+      <label>表示月：</label>
+      <select id="s-lm" onchange="loadStaffList()"></select>
+      <button class="btn-o" style="width:auto;padding:6px 12px;font-size:12px;margin-left:auto" onclick="submitMonth()">📤 月次提出</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" id="sl-cnt">0</div><div class="stat-l">件数</div></div>
+      <div class="stat"><div class="stat-n amber" id="sl-tot">¥0</div><div class="stat-l">合計</div></div>
+      <div class="stat"><div class="stat-n" style="font-size:13px;margin-top:4px" id="sl-sub">-</div><div class="stat-l">提出状況</div></div>
+    </div>
+    <div class="card" id="s-list-c"><div class="empty">記録がありません</div></div>
+  </div>
+
+  <div class="screen" id="s-sc-sum">
+    <div class="msel"><label>集計月：</label><select id="s-sm" onchange="loadStaffSummary()"></select></div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n amber" id="ss-tot">¥0</div><div class="stat-l">総経費</div></div>
+      <div class="stat"><div class="stat-n" id="ss-cnt">0</div><div class="stat-l">件数</div></div>
+      <div class="stat"><div class="stat-n green" id="ss-tax">¥0</div><div class="stat-l">節税概算</div></div>
+    </div>
+    <div class="card"><div class="sec-lbl">カテゴリー別内訳</div><div id="s-cat-bd"></div></div>
+    <button class="btn-o" style="margin-top:8px" onclick="exportCSV()">📥 CSVダウンロード（freee移行用）</button>
+  </div>
+
+  <div class="screen" id="s-sc-msg">
+    <div class="sec-lbl">会社からのコメント</div>
+    <div id="s-msg-list" style="margin-bottom:16px"></div>
+    <div class="card">
+      <div class="sec-lbl">総務へ連絡する</div>
+      <div class="field"><textarea id="s-new-msg" placeholder="質問・連絡事項を入力してください"></textarea></div>
+      <button class="btn-p" onclick="staffSendMsg()">送信する</button>
+    </div>
+  </div>
+
+  <!-- 売上入力画面 -->
+  <div class="screen" id="s-sc-sales">
+    <div class="notice">💰 会社から通知された売上を科目別に入力してください。合計が自動計算されます。</div>
+    <div class="card">
+      <div class="field"><label>対象月</label><input type="month" id="sv-month"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>💇 技術売上（円）</label><input type="number" id="sv-tech" placeholder="0" inputmode="numeric" oninput="calcSalesTotal()"></div>
+        <div class="field"><label>⭐ 指名売上（円）</label><input type="number" id="sv-nomi" placeholder="0" inputmode="numeric" oninput="calcSalesTotal()"></div>
+        <div class="field"><label>🛍 商品売上（円）</label><input type="number" id="sv-prod" placeholder="0" inputmode="numeric" oninput="calcSalesTotal()"></div>
+        <div class="field"><label>📸 モデル売上（円）</label><input type="number" id="sv-model" placeholder="0" inputmode="numeric" oninput="calcSalesTotal()"></div>
+      </div>
+      <div id="sv-total-disp" style="background:#f0fdf4;border-radius:8px;padding:10px 14px;font-size:13px;color:#0F6E56;margin-bottom:10px">
+        売上合計：<strong id="sv-total-val">¥0</strong>
+      </div>
+      <div class="field"><label>メモ（任意）</label><input type="text" id="sv-memo" placeholder="例：5月分売上"></div>
+      <div id="sv-rate-disp" style="background:#f0fdf4;border-radius:8px;padding:10px 14px;font-size:13px;color:#0F6E56;margin-bottom:14px;display:none">
+        歩合率：<span id="sv-rate-val"></span>% → 請求金額：<strong id="sv-claim-val"></strong>
+      </div>
+      <button class="btn-p" onclick="calcSales()">💴 請求金額を計算する</button>
+      <button class="btn-o" id="sv-save-btn" style="display:none;margin-top:8px" onclick="saveSales()">💾 保存する</button>
+    </div>
+    <div class="sec-lbl" style="margin-top:4px">保存済み売上一覧</div>
+    <div class="card" id="sv-list-c"><div class="empty">売上記録がありません</div></div>
+    <button class="btn-o" style="margin-top:8px" id="sv-pdf-btn" onclick="exportInvoicePDF()" style="display:none">🧾 請求書PDFを出力する</button>
+  </div>
+
+  <!-- 利益・税金画面 -->
+  <div class="screen" id="s-sc-profit">
+    <div class="msel"><label>対象年：</label><select id="pf-year" onchange="loadProfit()"></select></div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n green" id="pf-sales">¥0</div><div class="stat-l">年間売上</div></div>
+      <div class="stat"><div class="stat-n amber" id="pf-exp">¥0</div><div class="stat-l">年間経費</div></div>
+      <div class="stat"><div class="stat-n" id="pf-profit" style="color:#1a1a1a">¥0</div><div class="stat-l">利益</div></div>
+    </div>
+    <div id="pf-190-alert" style="display:none;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:13px;line-height:1.7"></div>
+    <!-- 月別グラフ -->
+    <div class="card">
+      <div class="sec-lbl">月別 売上・経費・利益</div>
+      <div id="pf-chart" style="overflow-x:auto"></div>
+    </div>
+    <!-- 税金計算 -->
+    <div class="card">
+      <div class="sec-lbl">確定申告 税金シミュレーション（青色申告）</div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px">青色申告特別控除65万円適用後の概算です</div>
+      <div id="pf-tax-detail"></div>
+      <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#0F6E56;line-height:1.8" id="pf-tax-note"></div>
+    </div>
+    <!-- 月別テーブル -->
+    <div class="card">
+      <div class="sec-lbl">月別明細</div>
+      <div id="pf-monthly-table"></div>
+    </div>
+  </div>
+
+  <div class="tabbar" id="s-tabs" style="font-size:9px">
+    <button class="active" onclick="staffTab('input',0)"><span class="tab-icon">＋</span>経費入力</button>
+    <button onclick="staffTab('list',1)"><span class="tab-icon">📋</span>一覧</button>
+    <button onclick="staffTab('sales',2)"><span class="tab-icon">💴</span>売上</button>
+    <button onclick="staffTab('profit',3)"><span class="tab-icon">📈</span>利益</button>
+    <button onclick="staffTab('msg',4)"><span class="tab-icon">💬</span>連絡<span id="msg-dot" style="display:none;color:#e53935;font-size:12px;margin-left:1px">●</span></button>
+  </div>
+</div>
+
+<!-- ─── 管理者画面 ─── -->
+<div id="admin-app" style="display:none">
+  <div class="header">
+    <div>
+      <div class="h-title">管理者ダッシュボード</div>
+      <div class="h-sub"><span class="sdot" id="a-sd"></span><span id="a-st">Hair Beauty Storia</span></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+  </div>
+
+  <div class="screen active" id="a-sc-overview">
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" id="a-mcnt">0</div><div class="stat-l">スタッフ数</div></div>
+      <div class="stat"><div class="stat-n amber" id="a-mtot">¥0</div><div class="stat-l">今月 総経費</div></div>
+      <div class="stat"><div class="stat-n red" id="a-mpnd">0</div><div class="stat-l">未確認件数</div></div>
+    </div>
+    <div class="sec-lbl">スタッフ別 今月サマリー</div>
+    <div id="a-ov-list"></div>
+  </div>
+
+  <div class="screen" id="a-sc-members">
+    <div class="sec-lbl">登録スタッフ一覧</div>
+    <div id="a-mem-list" style="margin-bottom:16px"></div>
+    <div class="card">
+      <div class="sec-lbl">新規スタッフ招待</div>
+      <div class="notice-sec">🔐 スタッフを招待するとSupabase Auth経由でアカウントが作成されます。スタッフ本人のメールアドレスに確認メールが届きます。</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="field"><label>表示名</label><input id="n-name" placeholder="石川あゆみ"></div>
+        <div class="field"><label>メールアドレス</label><input id="n-email" placeholder="ayumi@storia.jp" type="email"></div>
+      </div>
+      <div class="field"><label>初期パスワード</label><input id="n-pw" placeholder="storia2025" type="text"></div>
+      <button class="btn-p" onclick="addStaff()">招待してアカウント作成</button>
+      <div id="add-err" class="err"></div>
+    </div>
+  </div>
+
+  <div class="screen" id="a-sc-review">
+    <div class="msel" style="gap:8px">
+      <label>月：</label>
+      <select id="a-rm" onchange="loadAdminReview()"></select>
+      <label>スタッフ：</label>
+      <select id="a-rs" onchange="loadAdminReview()"></select>
+    </div>
+    <div id="a-rev-c"></div>
+    <div class="card" style="margin-top:12px">
+      <div class="sec-lbl">コメントを送る</div>
+      <div class="field"><textarea id="a-cmt" placeholder="確認事項・フィードバックを入力してください"></textarea></div>
+      <button class="btn-p" onclick="adminSendCmt()">送信する</button>
+    </div>
+  </div>
+
+  <div class="screen" id="a-sc-data">
+  <div class="card" style="margin-bottom:12px">
+    <div class="sec-lbl">歩合率設定（全スタッフ共通）</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <input type="number" id="a-rate-input" placeholder="50" style="width:80px;border:1px solid #e0e0e0;border-radius:8px;padding:8px 12px;font-size:16px;font-weight:600">
+      <span style="font-size:16px;font-weight:600">%</span>
+      <button class="btn-p" style="width:auto;padding:9px 16px" onclick="saveCommissionRate()">保存する</button>
+    </div>
+    <div id="a-rate-current" style="font-size:12px;color:#888"></div>
+  </div>
+
+    <div class="notice-sec">🔐 このシステムはSupabase Auth + RLS（行レベルセキュリティ）で保護されています。</div>
+    <div class="sec-lbl">セキュリティ状態</div>
+    <div class="sec-row">Supabase Auth 正規認証<span class="tag tm">✅ 有効</span></div>
+    <div class="sec-row">RLS スタッフ間データ完全分離<span class="tag tm">✅ 有効</span></div>
+    <div class="sec-row">データベース直接アクセス不可<span class="tag tm">✅ 有効</span></div>
+    <div class="sec-row">マルチデバイス・リアルタイム同期<span class="tag tm">✅ 有効</span></div>
+    <div class="sec-row">管理者のみ全員分閲覧可<span class="tag tm">✅ 有効</span></div>
+    <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn-o" style="margin:0" onclick="exportAllCSV()">📥 全データCSV</button>
+      <button class="btn-o" style="margin:0" onclick="backupJSON()">💾 バックアップ</button>
+    </div>
+    <div class="notice-warn" style="margin-top:14px">⚠️ Supabase無料プランは7日間アクセスがないと一時停止されます。週1回以上ログインしてください。</div>
+  </div>
+
+  <div class="tabbar" id="a-tabs">
+    <button class="active" onclick="adminTab('overview',0)"><span class="tab-icon">🏠</span>概要</button>
+    <button onclick="adminTab('members',1)"><span class="tab-icon">👥</span>メンバー</button>
+    <button onclick="adminTab('review',2)"><span class="tab-icon">✅</span>確認</button>
+    <button onclick="adminTab('data',3)"><span class="tab-icon">🔒</span>データ</button>
+  </div>
+</div>
+
+</div><!-- /.wrap -->
+
+<script>
+const SKEY = 'storia_cfg_v2';
+const catMap = {'材料費':'tm','被服費':'tf','交通費':'tk','通信費':'tt','研修費':'te','消耗品費':'ts','その他':'to'};
+let sb = null, me = null, myProfile = null, receiptB64 = null, syncTimer = null;
+
+/* ─── 設定 ─── */
+function getCfg(){try{return JSON.parse(localStorage.getItem(SKEY)||'{}')}catch(e){return {}}}
+function saveConfig(){
+  const url=Q('cfg-url').value.trim(), key=Q('cfg-key').value.trim();
+  if(!url||!key){Q('cfg-msg').textContent='URLとKeyを入力してください';return}
+  localStorage.setItem(SKEY,JSON.stringify({url,key}));
+  Q('cfg-msg').textContent='✅ 保存しました';
+  initSB();
+}
+function initSB(){
+  const c=getCfg();
+  if(!c.url||!c.key){Q('setup').open=true;return false}
+  try{
+    sb=supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});
+    Q('setup').removeAttribute('open');
+    return true;
+  }catch(e){return false}
+}
+
+/* ─── ユーティリティ ─── */
+const Q = id => document.getElementById(id);
+const fmt = n => '¥'+Math.round(n).toLocaleString();
+const show = (id,v) => Q(id).style.display = v ? 'block' : 'none';
+const setSync = (w,s) => {
+  const d=Q(w+'-sd'), t=Q(w+'-st');
+  if(!d||!t)return;
+  d.className='sdot'+(s==='ing'?' ing':'');
+  t.textContent=s==='ing'?'同期中...':'同期済み '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+};
+function loading(show, msg='処理中...'){
+  const el=Q('loader');
+  el.classList.toggle('show', show);
+  if(msg) Q('loader-msg').textContent=msg;
+}
+function curM(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function getMs(){
+  const ms=[];const now=new Date();
+  for(let i=0;i<12;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    ms.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  return ms;
+}
+function popSels(ids){
+  const ms=getMs(), cur=curM();
+  ids.forEach(id=>{
+    const el=Q(id);if(!el)return;
+    el.innerHTML=ms.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m.replace('-','年')}月</option>`).join('');
+  });
+}
+
+/* ─── 認証 ─── */
+async function doLogin(){
+  if(!sb&&!initSB()){showLoginErr('Supabase接続設定が必要です。上部の設定パネルを開いてURL・Keyを入力してください。');return}
+  const email=Q('l-email').value.trim(), pw=Q('l-pw').value;
+  if(!email||!pw){showLoginErr('メールアドレスとパスワードを入力してください');return}
+  loading(true,'認証中...');
+  Q('l-err').style.display='none';
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error){loading(false);showLoginErr(loginErrMsg(error.message));return}
+    me=data.user;
+    await loadProfile();
+    loading(false);
+    if(myProfile?.role==='admin'){showAdminApp()}else{showStaffApp()}
+  }catch(e){loading(false);showLoginErr('接続エラー：'+e.message)}
+}
+function loginErrMsg(msg){
+  if(msg.includes('Invalid login')||msg.includes('invalid_credentials'))return 'メールアドレスまたはパスワードが違います';
+  if(msg.includes('Email not confirmed'))return 'メール確認が完了していません。受信トレイをご確認ください';
+  return 'ログインエラー：'+msg;
+}
+function showLoginErr(msg){const el=Q('l-err');el.textContent=msg;el.style.display='block'}
+async function loadProfile(){
+  const {data,error}=await sb.from('profiles').select('*').eq('id',me.id).single();
+  if(data){
+    myProfile=data;
+  }else{
+    const {data:inserted}=await sb.from('profiles').upsert({id:me.id,name:me.email,role:'staff'},{onConflict:'id'}).select().single();
+    myProfile=inserted;
+  }
+}
+async function doLogout(){
+  loading(true,'ログアウト中...');
+  await sb.auth.signOut();
+  me=null;myProfile=null;receiptB64=null;
+  if(syncTimer)clearInterval(syncTimer);
+  loading(false);
+  show('login-screen',true);show('staff-app',false);show('admin-app',false);
+  Q('l-email').value='';Q('l-pw').value='';
+}
+
+/* ─── スタッフ画面 ─── */
+function showStaffApp(){
+  show('login-screen',false);show('staff-app',true);
+  Q('s-name-h').textContent=myProfile?.name||me.email;
+  Q('s-dt').value=new Date().toISOString().slice(0,10);
+  popSels(['s-lm','s-sm']);
+  staffTab('input',0);
+  checkUnread();
+  syncTimer=setInterval(()=>{loadStaffList();checkUnread()},30000);
+  showStaffAppExtra();
+}
+function staffTab(name,idx){
+  ['input','list','sum','sales','profit','msg'].forEach(n=>{const el=Q('s-sc-'+n);if(el)el.classList.remove('active')});
+  Q('s-sc-'+name).classList.add('active');
+  document.querySelectorAll('#s-tabs button').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  if(name==='list')loadStaffList();
+  if(name==='sum')loadStaffSummary();
+  if(name==='sales')loadSalesList();
+  if(name==='profit')loadProfit();
+  if(name==='msg')loadStaffMsgs();
+}
+function prevFile(input){
+  if(input.files&&input.files[0]){
+    const r=new FileReader();
+    r.onload=e=>{
+      receiptB64=e.target.result;
+      Q('s-thumb').innerHTML=`<img src="${receiptB64}" class="thumb">`;
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+function toggleCatHelp(){
+  const el=Q('s-cat-help');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+function updateBuntanHint(){
+  const cat=Q('s-cat').value;
+  const needBuntan=['通信費','地代家賃'].includes(cat);
+  const isSettai=cat==='接待交際費';
+  const notice=Q('s-cat-notice');
+
+  // 按分ボックス
+  Q('s-buntan-box').style.display=needBuntan?'block':'none';
+  Q('s-buntan-field').style.display=needBuntan?'block':'none';
+  if(!needBuntan){Q('s-buntan').value='1.0';}
+
+  // 接待交際費追加項目
+  Q('s-settai-box').style.display=isSettai?'block':'none';
+
+  // 科目別注意メッセージ
+  const notices={
+    '保険料': {bg:'#FFF1F2',border:'#f87171',color:'#991b1b',
+      text:'⚠️ <strong>保険料の注意</strong><br>個人で加入している医療保険・生命保険は経費になりません。<br>経費になるのは事業用の賠償保険・損害保険などです。<br>個人保険は確定申告時に「生命保険料控除」として別途申告します。'},
+    '研修費': {bg:'#FFFBEB',border:'#fbbf24',color:'#92400e',
+      text:'⚠️ <strong>研修費の注意</strong><br>美容技術・接客・ビジネスに直接関連するセミナーのみ経費になります。<br>マインド系・自己啓発系は事業との関連が問われる場合があります。<br>参加証・領収書・内容のメモを必ず保管してください。'},
+    '通信費': {bg:'#FFFBEB',border:'#fbbf24',color:'#92400e',
+      text:'⚠️ <strong>通信費の注意</strong><br>スマホ・インターネット代は全額経費にできません。仕事で使う割合（按分率）のみ計上できます。<br>「1日8時間のうち仕事で4時間使う」など客観的な根拠を下の欄に記入してください。'},
+    '地代家賃': {bg:'#FFFBEB',border:'#fbbf24',color:'#92400e',
+      text:'⚠️ <strong>地代家賃の注意</strong><br>自宅の家賃を全額経費にすることはできません。仕事で使う部屋の面積割合で按分します。<br>例）30㎡の部屋のうち6㎡を仕事場として使う → 20%を経費計上'},
+    '雑費': {bg:'#F8FAFC',border:'#94a3b8',color:'#475569',
+      text:'💡 <strong>雑費について</strong><br>どの科目にも当てはまらない経費です。<br>多用すると税務調査で説明を求められやすくなります。できるだけ他の科目に分類しましょう。'},
+  };
+  if(notices[cat]){
+    const n=notices[cat];
+    notice.style.display='block';
+    notice.style.background=n.bg;
+    notice.style.border=`1px solid ${n.border}`;
+    notice.style.color=n.color;
+    notice.innerHTML=n.text;
+  }else{
+    notice.style.display='none';
+  }
+  updateBuntanPreview();
+}
+function updateBuntanPreview(){
+  const amt=parseFloat(Q('s-amt')?.value)||0;
+  const rate=parseFloat(Q('s-buntan')?.value)||1.0;
+  const prev=Q('s-buntan-preview');
+  if(!prev)return;
+  if(amt>0&&rate<1.0){
+    prev.style.display='block';
+    prev.textContent=`計上金額：¥${Math.round(amt*rate).toLocaleString()}（¥${amt.toLocaleString()} × ${Math.round(rate*100)}%）`;
+  }else{
+    prev.style.display='none';
+  }
+}
+async function addExpense(){
+  const dt=Q('s-dt').value, origAmt=parseInt(Q('s-amt').value), cat=Q('s-cat').value;
+  const pay=Q('s-pay').value, memo=Q('s-memo').value;
+  const payee=Q('s-payee')?.value||'';
+  const buntanRate=parseFloat(Q('s-buntan')?.value)||1.0;
+  const buntanReason=Q('s-buntan-reason')?.value||'';
+  const amt=Math.round(origAmt*buntanRate);
+  // 接待交際費の追加情報
+  const settaiPlace=Q('s-settai-place')?.value||'';
+  const settaiCount=Q('s-settai-count')?.value||'';
+  const settaiPurpose=Q('s-settai-purpose')?.value||'';
+  if(!dt||!origAmt||!cat){alert('日付・金額・科目は必須です');return}
+  if(cat==='接待交際費'&&!settaiPlace){alert('接待交際費は行った先を入力してください');return}
+  const now=new Date().toISOString();
+  // メモに接待情報を自動付加
+  let fullMemo=memo;
+  if(cat==='接待交際費'&&settaiPlace){
+    fullMemo=`${memo?memo+' ／ ':''}行先:${settaiPlace} 参加${settaiCount||'?'}人 ${settaiPurpose}`.trim();
+  }
+  setSync('s','ing');
+  const {error}=await sb.from('expenses').insert({
+    user_id:me.id, date:dt, amount:amt, orig_amount:origAmt,
+    buntan_rate:buntanRate, category:cat,
+    payment:pay, memo:fullMemo, payee,
+    buntan_reason:buntanReason,
+    receipt_b64:receiptB64, status:'pending',
+    input_at:now
+  });
+  if(error){alert('保存エラー：'+error.message);setSync('s','done');return}
+  receiptB64=null;
+  Q('s-thumb').innerHTML='';Q('s-file').value='';
+  ['s-amt','s-cat','s-memo','s-payee','s-buntan-reason','s-settai-place','s-settai-count','s-settai-purpose'].forEach(id=>{const el=Q(id);if(el)el.value='';});
+  if(Q('s-buntan'))Q('s-buntan').value='1.0';
+  ['s-buntan-box','s-buntan-field','s-buntan-preview','s-settai-box','s-cat-notice'].forEach(id=>{const el=Q(id);if(el)el.style.display='none';});
+  setSync('s','done');
+  popSels(['s-lm','s-sm']);
+  staffTab('list',1);
+}
+async function loadStaffList(){
+  const m=Q('s-lm').value;
+  /* RLSにより自分のデータのみ取得される */
+  const {data}=await sb.from('expenses').select('*')
+    .gte('date',m+'-01').lte('date',m+'-31').order('date',{ascending:false});
+  const items=data||[];
+  Q('sl-cnt').textContent=items.length;
+  Q('sl-tot').textContent=fmt(items.reduce((s,e)=>s+e.amount,0));
+  const {data:sub}=await sb.from('monthly_submissions').select('id')
+    .eq('user_id',me.id).eq('month',m).maybeSingle();
+  Q('sl-sub').innerHTML=sub
+    ?'<span style="color:#0F6E56;font-weight:600">提出済</span>'
+    :'<span style="color:#92400e">未提出</span>';
+  const c=Q('s-list-c');
+  if(!items.length){c.innerHTML='<div class="empty">この月の記録はありません</div>';return}
+  c.innerHTML=items.map(e=>`
+    <div class="item-row" style="flex-wrap:wrap">
+      <span class="i-dt">${e.date.slice(5)}</span>
+      <span class="tag ${catMap[e.category]||'to'}">${e.category}</span>
+      <div style="flex:1;min-width:0">
+        <div class="i-nm">${e.memo||'（メモなし）'}</div>
+        ${e.payee?`<div style="font-size:10px;color:#555;margin-top:1px">🏪 ${e.payee}</div>`:''}
+        ${e.buntan_rate&&e.buntan_rate<1?`<div style="font-size:9px;color:#b45309">按分${Math.round(e.buntan_rate*100)}%（元:${fmt(e.orig_amount||e.amount)}）</div>`:''}
+        ${e.buntan_reason?`<div style="font-size:9px;color:#888">根拠:${e.buntan_reason.slice(0,30)}…</div>`:''}
+        ${e.input_at?`<div style="font-size:9px;color:#bbb">⏱ ${new Date(e.input_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>`:''}
+      </div>
+      <span class="i-am">${fmt(e.amount)}</span>
+      <span class="sbadge ${e.status==='ok'?'ok':'pnd'}">${e.status==='ok'?'済':'未'}</span>
+      <button class="del-btn" onclick="delExp(${e.id})" aria-label="削除">×</button>
+    </div>`).join('');
+}
+async function delExp(id){
+  if(!confirm('この記録を削除しますか？'))return;
+  setSync('s','ing');
+  await sb.from('expenses').delete().eq('id',id);
+  setSync('s','done');
+  loadStaffList();
+}
+async function loadStaffSummary(){
+  const m=Q('s-sm').value;
+  const {data}=await sb.from('expenses').select('*').gte('date',m+'-01').lte('date',m+'-31');
+  const items=data||[], total=items.reduce((s,e)=>s+e.amount,0);
+  Q('ss-tot').textContent=fmt(total);
+  Q('ss-cnt').textContent=items.length;
+  Q('ss-tax').textContent=fmt(total*0.2);
+  const cats={};
+  items.forEach(e=>{cats[e.category]=(cats[e.category]||0)+e.amount});
+  const bd=Q('s-cat-bd');
+  if(!Object.keys(cats).length){bd.innerHTML='<div class="empty">データなし</div>';return}
+  bd.innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>{
+    const pct=total?Math.round(amt/total*100):0;
+    return `<div class="cat-row">
+      <span class="tag ${catMap[cat]||'to'}" style="min-width:70px">${cat}</span>
+      <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div></div>
+      <span style="font-size:11px;color:#aaa;min-width:26px">${pct}%</span>
+      <span style="font-size:13px;font-weight:700;min-width:60px;text-align:right;color:#b45309">${fmt(amt)}</span>
+    </div>`;
+  }).join('');
+}
+async function submitMonth(){
+  const m=Q('s-lm').value;
+  const {data}=await sb.from('expenses').select('id').gte('date',m+'-01').lte('date',m+'-31');
+  if(!data||!data.length){alert('この月の記録がありません');return}
+  setSync('s','ing');
+  await sb.from('monthly_submissions').upsert(
+    {user_id:me.id, month:m, submitted_at:new Date().toISOString()},
+    {onConflict:'user_id,month'}
+  );
+  setSync('s','done');
+  alert(`${m.replace('-','年')}月の経費を提出しました`);
+  loadStaffList();
+}
+async function loadStaffMsgs(){
+  const {data}=await sb.from('messages').select('*')
+    .eq('to_user_id',me.id).order('created_at',{ascending:false});
+  await sb.from('messages').update({is_read:true})
+    .eq('to_user_id',me.id).eq('from_role','admin');
+  Q('msg-dot').style.display='none';
+  const c=Q('s-msg-list');
+  if(!data||!data.length){c.innerHTML='<div class="empty">メッセージはありません</div>';return}
+  c.innerHTML=data.map(m=>`
+    <div class="msg-card ${m.from_role==='admin'?'from-admin':'from-staff'}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span class="tag ${m.from_role==='admin'?'tm':'tf'}">${m.from_role==='admin'?'総務からのコメント':'自分の送信'}</span>
+        <span style="font-size:11px;color:#bbb">${new Date(m.created_at).toLocaleDateString('ja-JP')}</span>
+      </div>
+      <div style="font-size:14px;line-height:1.6">${m.body}</div>
+    </div>`).join('');
+}
+async function checkUnread(){
+  const {count}=await sb.from('messages').select('id',{count:'exact',head:true})
+    .eq('to_user_id',me.id).eq('from_role','admin').eq('is_read',false);
+  Q('msg-dot').style.display=(count&&count>0)?'inline':'none';
+}
+async function staffSendMsg(){
+  const body=Q('s-new-msg').value.trim();
+  if(!body)return;
+  setSync('s','ing');
+  await sb.from('messages').insert({
+    to_user_id:me.id, from_user_id:me.id, from_role:'staff', body, is_read:false
+  });
+  Q('s-new-msg').value='';
+  setSync('s','done');
+  loadStaffMsgs();
+}
+async function exportCSV(){
+  const m=Q('s-sm').value;
+  const {data}=await sb.from('expenses').select('*').gte('date',m+'-01').lte('date',m+'-31').order('date');
+  const total=(data||[]).reduce((s,e)=>s+e.amount,0);
+  let csv='日付,カテゴリー,支払方法,内容,金額\n';
+  (data||[]).forEach(e=>{csv+=`${e.date},${e.category},${e.payment},"${e.memo||''}",${e.amount}\n`});
+  csv+=`合計,,,,${total}`;
+  dl(csv, `経費_${myProfile?.name||'staff'}_${m}.csv`);
+}
+
+/* ─── 管理者画面 ─── */
+function showAdminApp(){
+  show('login-screen',false);show('admin-app',true);
+  popSels(['a-rm']);
+  loadAdminStaffSel();
+  adminTab('overview',0);
+  syncTimer=setInterval(()=>loadAdminOverview(),30000);
+}
+function adminTab(name,idx){
+  ['overview','members','review','data'].forEach(n=>{const el=Q('a-sc-'+n);if(el)el.classList.remove('active')});
+  Q('a-sc-'+name).classList.add('active');
+  document.querySelectorAll('#a-tabs button').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  if(name==='overview')loadAdminOverview();
+  if(name==='members')loadAdminMembers();
+  if(name==='review')loadAdminReview();
+  if(name==="data")loadAdminDataTab();
+}
+async function loadAdminStaffSel(){
+  const {data}=await sb.from('profiles').select('id,name').eq('role','staff').order('name');
+  const sel=Q('a-rs');
+  if(sel&&data)sel.innerHTML=data.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+async function saveCommissionRate(){
+  const rate = parseFloat(document.getElementById("a-rate-input").value);
+  if(!rate||rate<=0||rate>100){alert("1〜100の数値を入力してください");return;}
+  const {error} = await sb.from("settings").upsert({key:"commission_rate",value:String(rate),updated_at:new Date().toISOString()},{onConflict:"key"});
+  if(error){alert("保存エラー："+error.message);return;}
+  document.getElementById("a-rate-current").textContent = "現在の歩合率："+rate+"%（保存済み）";
+  alert("歩合率を"+rate+"%に設定しました");
+}
+async function loadAdminDataTab(){
+  const {data} = await sb.from("settings").select("value").eq("key","commission_rate").maybeSingle();
+  if(data){
+    document.getElementById("a-rate-input").value = data.value;
+    document.getElementById("a-rate-current").textContent = "現在の歩合率："+data.value+"%";
+  }
+}
+
+async function loadAdminOverview(){
+  setSync('a','ing');
+  const m=curM();
+  const {data:staff}=await sb.from('profiles').select('id,name').eq('role','staff');
+  Q('a-mcnt').textContent=(staff||[]).length;
+  let totalAll=0, pndAll=0;
+  const rows=await Promise.all((staff||[]).map(async s=>{
+    const {data:exps}=await sb.from('expenses').select('amount,status')
+      .eq('user_id',s.id).gte('date',m+'-01').lte('date',m+'-31');
+    const tot=(exps||[]).reduce((x,e)=>x+e.amount,0);
+    const pnd=(exps||[]).filter(e=>e.status==='pending').length;
+    totalAll+=tot; pndAll+=pnd;
+    const {data:sub}=await sb.from('monthly_submissions').select('id')
+      .eq('user_id',s.id).eq('month',m).maybeSingle();
+    return `<div class="member-card">
+      <div class="avatar">${s.name.slice(0,1)}</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600">${s.name}</div>
+        <div style="font-size:12px;color:#aaa">${(exps||[]).length}件</div></div>
+      <div style="font-size:14px;font-weight:700;color:#b45309;margin-right:8px">${fmt(tot)}</div>
+      <span class="sbadge ${sub?'ok':'pnd'}">${sub?'提出済':'未提出'}</span>
+    </div>`;
+  }));
+  Q('a-mtot').textContent=fmt(totalAll);
+  Q('a-mpnd').textContent=pndAll;
+  Q('a-ov-list').innerHTML=rows.join('')||'<div class="empty">スタッフなし</div>';
+  setSync('a','done');
+}
+async function loadAdminMembers(){
+  const {data}=await sb.from('profiles').select('*').eq('role','staff').order('name');
+  Q('a-mem-list').innerHTML=(data||[]).map(s=>`
+    <div class="member-card">
+      <div class="avatar">${s.name.slice(0,1)}</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600">${s.name}</div>
+        <div style="font-size:12px;color:#aaa">${new Date(s.created_at).toLocaleDateString('ja-JP')} 登録</div></div>
+      <span class="tag tm">スタッフ</span>
+    </div>`).join('')||'<div class="empty">スタッフなし</div>';
+}
+async function addStaff(){
+  const name=Q('n-name').value.trim(), email=Q('n-email').value.trim(), pw=Q('n-pw').value.trim();
+  if(!name||!email||!pw){alert('すべて入力してください');return}
+  loading(true,'アカウント作成中...');
+  Q('add-err').style.display='none';
+  /* Supabase Auth経由でユーザー作成。トリガーでprofilesに自動登録 */
+  const {data,error}=await sb.auth.admin?.createUser
+    ? await sb.auth.admin.createUser({email,password:pw,email_confirm:true,user_metadata:{name,role:'staff'}})
+    : await sb.auth.signUp({email,password:pw,options:{data:{name,role:'staff'}}});
+  loading(false);
+  if(error){const el=Q('add-err');el.textContent='エラー：'+error.message;el.style.display='block';return}
+  /* admin APIが使えない場合は手動でprofileを挿入 */
+  if(data?.user){
+    await sb.from('profiles').upsert({id:data.user.id,name,role:'staff'});
+  }
+  Q('n-name').value='';Q('n-email').value='';Q('n-pw').value='';
+  alert(`${name}のアカウントを作成しました\nメール：${email}`);
+  loadAdminMembers();loadAdminStaffSel();
+}
+async function loadAdminReview(){
+  const m=Q('a-rm').value, uid=Q('a-rs').value;
+  if(!uid)return;
+  const {data:prof}=await sb.from('profiles').select('name').eq('id',uid).single();
+  /* RLSにより管理者は全スタッフ分取得可能 */
+  const {data:exps}=await sb.from('expenses').select('*')
+    .eq('user_id',uid).gte('date',m+'-01').lte('date',m+'-31').order('date',{ascending:false});
+  const items=exps||[], total=items.reduce((s,e)=>s+e.amount,0);
+  const c=Q('a-rev-c');
+  if(!items.length){c.innerHTML=`<div class="empty">${prof?.name}の${m}月の記録はありません</div>`;return}
+  c.innerHTML=`<div class="stat-row-2">
+    <div class="stat"><div class="stat-n">${items.length}件</div><div class="stat-l">${prof?.name}</div></div>
+    <div class="stat"><div class="stat-n amber">${fmt(total)}</div><div class="stat-l">合計経費</div></div>
+  </div>`+
+  items.map(e=>`<div class="item-row">
+    <span class="i-dt">${e.date.slice(5)}</span>
+    <span class="tag ${catMap[e.category]||'to'}">${e.category}</span>
+    <span class="i-nm">${e.memo||'（メモなし）'}</span>
+    <span class="i-am">${fmt(e.amount)}</span>
+    <button onclick="approveExp(${e.id},'${e.status}')"
+      style="border:none;background:none;font-size:12px;cursor:pointer;padding:2px 6px;
+      color:${e.status==='ok'?'#0F6E56':'#b45309'};font-weight:600;white-space:nowrap">
+      ${e.status==='ok'?'✅ 確認済':'確認する'}
+    </button>
+  </div>`).join('');
+}
+async function approveExp(id, cur){
+  await sb.from('expenses').update({status:cur==='ok'?'pending':'ok'}).eq('id',id);
+  loadAdminReview();
+  loadAdminOverview();
+}
+async function adminSendCmt(){
+  const body=Q('a-cmt').value.trim(), toUid=Q('a-rs').value;
+  if(!body||!toUid)return;
+  setSync('a','ing');
+  await sb.from('messages').insert({
+    to_user_id:toUid, from_user_id:me.id, from_role:'admin', body, is_read:false
+  });
+  Q('a-cmt').value='';
+  setSync('a','done');
+  alert('コメントを送信しました');
+}
+async function exportAllCSV(){
+  const m=curM();
+  const {data:staff}=await sb.from('profiles').select('id,name').eq('role','staff');
+  let csv='スタッフ名,日付,カテゴリー,支払方法,内容,金額\n';
+  for(const s of(staff||[])){
+    const {data:exps}=await sb.from('expenses').select('*')
+      .eq('user_id',s.id).gte('date',m+'-01').lte('date',m+'-31').order('date');
+    (exps||[]).forEach(e=>{csv+=`${s.name},${e.date},${e.category},${e.payment},"${e.memo||''}",${e.amount}\n`});
+  }
+  dl(csv, `全スタッフ経費_${m}.csv`);
+}
+async function backupJSON(){
+  const {data:exps}=await sb.from('expenses').select('id,date,amount,category,payment,memo,status,user_id');
+  const {data:msgs}=await sb.from('messages').select('id,body,from_role,created_at,to_user_id');
+  const b=new Blob([JSON.stringify({exported:new Date().toISOString(),expenses:exps||[],messages:msgs||[]},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`storia_backup_${curM()}.json`;a.click();
+}
+function dl(csv, filename){
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+}
+
+/* ─── 売上入力 ─── */
+let pendingSalesData = null;
+
+function showStaffAppExtra(){
+  const now = new Date();
+  const el = document.getElementById("sv-month");
+  if(el) el.value = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  const yr = document.getElementById("pf-year");
+  if(yr){
+    yr.innerHTML = "";
+    for(let y=now.getFullYear();y>=now.getFullYear()-3;y--){
+      yr.innerHTML += `<option value="${y}"${y===now.getFullYear()?" selected":""}>${y}年</option>`;
+    }
+  }
+}
+
+async function getCommissionRate(){
+  const {data} = await sb.from("settings").select("value").eq("key","commission_rate").maybeSingle();
+  return data ? parseFloat(data.value) : 50;
+}
+
+function calcSalesTotal(){
+  const tech=parseFloat(Q('sv-tech')?.value)||0;
+  const nomi=parseFloat(Q('sv-nomi')?.value)||0;
+  const prod=parseFloat(Q('sv-prod')?.value)||0;
+  const model=parseFloat(Q('sv-model')?.value)||0;
+  const total=tech+nomi+prod+model;
+  Q('sv-total-val').textContent=fmt(total);
+}
+async function calcSales(){
+  const tech=parseFloat(Q('sv-tech')?.value)||0;
+  const nomi=parseFloat(Q('sv-nomi')?.value)||0;
+  const prod=parseFloat(Q('sv-prod')?.value)||0;
+  const model=parseFloat(Q('sv-model')?.value)||0;
+  const sales=tech+nomi+prod+model;
+  if(!sales){alert("売上金額を入力してください");return;}
+  const rate=await getCommissionRate();
+  const claim=Math.round(sales*rate/100);
+  Q('sv-rate-val').textContent=rate;
+  Q('sv-claim-val').textContent=fmt(claim);
+  Q('sv-rate-disp').style.display="block";
+  Q('sv-save-btn').style.display="block";
+  pendingSalesData={sales,rate,claim,tech,nomi,prod,model};
+}
+
+async function saveSales(){
+  if(!pendingSalesData){alert("先に計算してください");return;}
+  const month=Q('sv-month').value;
+  const memo=Q('sv-memo').value;
+  if(!month){alert("対象月を選択してください");return;}
+  const now=new Date().toISOString();
+  setSync("s","ing");
+  const {error}=await sb.from("sales").insert({
+    user_id:me.id,month,
+    sales_amount:pendingSalesData.sales,
+    commission_rate:pendingSalesData.rate,
+    claim_amount:pendingSalesData.claim,
+    sales_tech:pendingSalesData.tech||0,
+    sales_nomination:pendingSalesData.nomi||0,
+    sales_product:pendingSalesData.prod||0,
+    sales_model:pendingSalesData.model||0,
+    memo,staff_name:myProfile?.name||me.email,
+    input_at:now
+  });
+  if(error){alert("保存エラー："+error.message);setSync("s","done");return;}
+  setSync("s","done");
+  ['sv-tech','sv-nomi','sv-prod','sv-model','sv-memo'].forEach(id=>{const el=Q(id);if(el)el.value='';});
+  if(Q('sv-total-val'))Q('sv-total-val').textContent='¥0';
+  Q('sv-rate-disp').style.display="none";
+  Q('sv-save-btn').style.display="none";
+  pendingSalesData=null;
+  alert("売上を保存しました");
+  loadSalesList();
+}
+
+async function loadSalesList(){
+  const {data}=await sb.from("sales").select("*").eq("user_id",me.id).order("month",{ascending:false});
+  const c=Q("sv-list-c");
+  const items=data||[];
+  if(!items.length){c.innerHTML='<div class="empty">売上記録がありません</div>';return;}
+  c.innerHTML=items.map(s=>{
+    const bd=[];
+    if(s.sales_tech)bd.push('技術:'+fmt(s.sales_tech));
+    if(s.sales_nomination)bd.push('指名:'+fmt(s.sales_nomination));
+    if(s.sales_product)bd.push('商品:'+fmt(s.sales_product));
+    if(s.sales_model)bd.push('モデル:'+fmt(s.sales_model));
+    const ts=s.input_at?new Date(s.input_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    return'<div class="item-row" style="flex-wrap:wrap">'+
+      '<span class="i-dt">'+s.month+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px">'+(s.memo||'売上')+'</div>'+
+        (bd.length?'<div style="font-size:10px;color:#888;margin-top:2px">'+bd.join('　')+'</div>':'')+
+        (ts?'<div style="font-size:9px;color:#bbb">入力:'+ts+'</div>':'')+
+      '</div>'+
+      '<span class="i-am" style="color:#1D9E75">'+fmt(s.claim_amount)+'</span>'+
+      '<button class="del-btn" onclick="exportInvoicePDF(\''+s.month+'\','+s.sales_amount+','+s.commission_rate+','+s.claim_amount+',\''+(s.memo||'')+'\')">🧾</button>'+
+    '</div>';
+  }).join('');
+}
+
+
+async function exportInvoicePDF(month,salesAmt,rate,claimAmt,memo){
+  const staffName = myProfile?.name||me.email;
+  const today = new Date();
+  const dateStr = today.getFullYear()+"年"+String(today.getMonth()+1).padStart(2,"0")+"月"+String(today.getDate()).padStart(2,"0")+"日";
+  const timeStr = String(today.getHours()).padStart(2,"0")+":"+String(today.getMinutes()).padStart(2,"0");
+  const issuedAt = dateStr+" "+timeStr+"発行";
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>body{font-family:"Hiragino Sans",sans-serif;padding:40px;max-width:600px;margin:0 auto}h1{font-size:24px;text-align:center;margin-bottom:30px;border-bottom:2px solid #1D9E75;padding-bottom:10px;color:#1D9E75}.row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#1D9E75;color:#fff;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #eee}.tot td{font-weight:bold;background:#f0fdf4;font-size:16px}.ft{margin-top:30px;font-size:12px;color:#888;text-align:center}</style></head><body><h1>請　求　書</h1><div class="row"><span>発行日時</span><span>${issuedAt}</span></div><div class="row"><span>請求者</span><span>${staffName}</span></div><div class="row"><span>対象月</span><span>${month.replace("-","年")}月分</span></div><div class="row"><span>請求先</span><span>Hair Beauty Storia 御中</span></div><table><tr><th>項目</th><th>金額</th></tr><tr><td>美容師業務 売上高</td><td>${fmt(salesAmt)}</td></tr><tr><td>歩合率</td><td>${rate}%</td></tr>${memo?`<tr><td>備考</td><td>${memo}</td></tr>`:"" }<tr class="tot"><td>請求金額</td><td>${fmt(claimAmt)}</td></tr></table><div class="ft">Hair Beauty Storia ダブルワーク制度</div></body></html>`;
+  const w=window.open("","_blank");
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
+
+async function loadProfit(){
+  const year = document.getElementById("pf-year")?.value||new Date().getFullYear();
+  const months=Array.from({length:12},(_,i)=>year+"-"+String(i+1).padStart(2,"0"));
+  const {data:salesData}=await sb.from("sales").select("*").eq("user_id",me.id).gte("month",year+"-01").lte("month",year+"-12");
+  const {data:expData}=await sb.from("expenses").select("*").gte("date",year+"-01-01").lte("date",year+"-12-31");
+  const sM={},eM={};
+  months.forEach(m=>{sM[m]=0;eM[m]=0;});
+  (salesData||[]).forEach(s=>{sM[s.month]=(sM[s.month]||0)+s.claim_amount;});
+  (expData||[]).forEach(e=>{const m=e.date.slice(0,7);eM[m]=(eM[m]||0)+e.amount;});
+  const ts=Object.values(sM).reduce((a,b)=>a+b,0);
+  const te=Object.values(eM).reduce((a,b)=>a+b,0);
+  const tp=ts-te;
+  document.getElementById("pf-sales").textContent=fmt(ts);
+  document.getElementById("pf-exp").textContent=fmt(te);
+  const pp=document.getElementById("pf-profit");
+  pp.textContent=fmt(tp);
+  pp.style.color=tp>=0?"#1D9E75":"#dc2626";
+  const maxV=Math.max(...months.map(m=>Math.max(sM[m],eM[m])),1);
+  document.getElementById("pf-chart").innerHTML=`<div style="display:flex;align-items:flex-end;gap:3px;height:130px;padding:8px 0;min-width:500px">${months.map(m=>{const s=sM[m],e=eM[m],p=s-e,sh=Math.max(s/maxV*90,s>0?3:0),eh=Math.max(e/maxV*90,e>0?3:0);return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;display:flex;gap:1px;align-items:flex-end;height:90px"><div style="flex:1;background:#1D9E75;border-radius:2px 2px 0 0;height:${sh}px"></div><div style="flex:1;background:#f59e0b;border-radius:2px 2px 0 0;height:${eh}px"></div></div><div style="font-size:9px;color:${p>=0?"#1D9E75":"#dc2626"}">${m.slice(5)}月</div></div>`;}).join("")}</div><div style="display:flex;gap:12px;font-size:11px;color:#888;margin-top:4px"><span>🟢 売上</span><span>🟡 経費</span></div>`;
+  calcTax(tp);
+  document.getElementById("pf-monthly-table").innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><tr style="background:#f5f5f0"><th style="padding:6px;text-align:left">月</th><th style="padding:6px;text-align:right">売上</th><th style="padding:6px;text-align:right">経費</th><th style="padding:6px;text-align:right">利益</th></tr>${months.map(m=>{const s=sM[m],e=eM[m],p=s-e;if(s===0&&e===0)return"";return`<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:6px">${m.slice(5)}月</td><td style="padding:6px;text-align:right;color:#1D9E75">${fmt(s)}</td><td style="padding:6px;text-align:right;color:#b45309">${fmt(e)}</td><td style="padding:6px;text-align:right;color:${p>=0?"#1D9E75":"#dc2626"};font-weight:500">${fmt(p)}</td></tr>`;}).join("")}</table>`;
+}
+
+function calcTax(profit){
+  const BD=650000,BC=480000;
+  const si=Math.round(profit*0.15);
+  const ab=Math.max(profit-BD,0);
+  const ti=Math.max(ab-BC-si,0);
+  let it=0;
+  for(const [lim,r,d] of [[1950000,.05,0],[3300000,.1,97500],[6950000,.2,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.4,2796000],[Infinity,.45,4796000]]){
+    if(ti<=lim){it=Math.round(ti*r-d);break;}
+  }
+  const rt=Math.round(it*.021),rst=Math.round(ti*.1),tot=it+rt+rst;
+  document.getElementById("pf-tax-detail").innerHTML=`<div style="font-size:13px"><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0"><span>事業所得（利益）</span><span style="font-weight:500">${fmt(profit)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1D9E75"><span>青色申告特別控除</span><span>－${fmt(Math.min(BD,profit))}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1D9E75"><span>基礎控除</span><span>－${fmt(BC)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;color:#1D9E75"><span>社会保険料控除（概算）</span><span>－${fmt(si)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:2px solid #1D9E75"><span style="font-weight:500">課税所得</span><span style="font-weight:500">${fmt(ti)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0"><span>所得税</span><span style="color:#b45309;font-weight:500">${fmt(it)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0"><span>復興特別所得税</span><span style="color:#b45309">${fmt(rt)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0"><span>住民税（概算）</span><span style="color:#b45309">${fmt(rst)}</span></div><div style="background:#fff8f0;border-radius:6px;padding:10px;margin-top:4px;display:flex;justify-content:space-between"><span style="font-weight:600">税金合計（概算）</span><span style="color:#dc2626;font-weight:700;font-size:16px">${fmt(tot)}</span></div></div>`;
+  document.getElementById("pf-tax-note").innerHTML="💡 <strong>確定申告のポイント</strong><br>・青色申告で65万円控除：e-Taxでの電子申告が必要<br>・経費の領収書は7年間保管してください<br>・この計算は概算です。税理士への相談をお勧めします";
+  // 190万円アラート
+  const alert190=document.getElementById("pf-190-alert");
+  if(alert190){
+    const THRESHOLD=1900000;
+    if(ti>THRESHOLD){
+      alert190.style.display="block";
+      alert190.style.background="#FFF1F2";
+      alert190.style.border="1px solid #f87171";
+      alert190.style.color="#991b1b";
+      alert190.innerHTML=`⚠️ <strong>課税所得が190万円を超えています（${fmt(ti)}）</strong><br>所得税率が10% → 20%に上がります。経費の計上漏れがないか再確認を。追加の節税手段（iDeCo・小規模企業共済など）についても税理士にご相談ください。`;
+    }else if(ti>0){
+      const diff=THRESHOLD-ti;
+      alert190.style.display="block";
+      alert190.style.background="#F0FDF4";
+      alert190.style.border="1px solid #86efac";
+      alert190.style.color="#166534";
+      alert190.innerHTML=`✅ <strong>課税所得は190万円以内です（${fmt(ti)}）</strong><br>190万円まであと ${fmt(diff)} の余裕があります。現在の所得税率は10%が適用されています。`;
+    }else{
+      alert190.style.display="none";
+    }
+  }
+}
+
+/* ─── セッション復元 ─── */
+async function restoreSession(){
+  if(!sb)return;
+  loading(true,'セッション確認中...');
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    me=session.user;
+    await loadProfile();
+    loading(false);
+    if(myProfile?.role==='admin'){showAdminApp()}else{showStaffApp()}
+  }else{
+    loading(false);
+  }
+  /* 認証状態の変化を監視 */
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_OUT'){
+      me=null;myProfile=null;
+      show('login-screen',true);show('staff-app',false);show('admin-app',false);
+    }
+  });
+}
+
+/* ─── 起動 ─── */
+window.addEventListener('load',async()=>{
+  const c=getCfg();
+  if(c.url)Q('cfg-url').value=c.url;
+  if(c.key)Q('cfg-key').value=c.key;
+  if(initSB()){
+    await restoreSession();
+  }
+});
+</script>
+</body>
+</html>
