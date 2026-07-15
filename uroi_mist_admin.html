@@ -181,6 +181,7 @@
   <button class="nav-btn" onclick="showPage('staff')">🔬 スタッフ詳細</button>
   <button class="nav-btn" onclick="showPage('customer')">💆 お客様詳細</button>
   <button class="nav-btn" onclick="showPage('export')">📤 レポート出力</button>
+  <button class="nav-btn" onclick="showPage('coat')">🧴 COAT詳細</button>
 </div>
 
 <div class="main">
@@ -416,6 +417,68 @@
   </div>
 </div>
 
+
+<!-- ===== PAGE: COAT ===== -->
+<div class="page" id="page-coat">
+  <div class="summary-grid" style="margin-bottom:16px;">
+    <div class="sum-card"><div class="num" id="coat-count">—</div><div class="label">COAT回答数</div></div>
+    <div class="sum-card"><div class="num" id="coat-avg">—</div><div class="label">総合平均スコア</div><div class="sub">全評価項目平均</div></div>
+    <div class="sum-card"><div class="num" id="coat-recommend">—</div><div class="label">推奨意向「そう思う」</div><div class="sub">お客様に勧められる</div></div>
+    <div class="sum-card"><div class="num" id="coat-continue">—</div><div class="label">継続購入「そう思う」</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">🏪 店舗別 回答数（COAT）</div></div>
+    <div class="card-body"><div class="store-bars" id="coat-store-bars"><div class="loading">データ読み込み中...</div></div></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-head"><div class="card-title">🚿 使用感スコア（シャンプー）</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-coat-wash"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">✨ 仕上がり実感スコア</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-coat-finish"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-head"><div class="card-title">💬 接客で伝えたいポイント</div></div>
+      <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-coat-talk"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">💆 髪の悩み 分布</div></div>
+      <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-coat-concerns"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">💡 振り返り：提案の価値</div></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chart-coat-reflection"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">📋 COAT回答一覧</div></div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>日付</th><th>名前</th><th>店舗</th><th>使用製品</th><th>泡立ち</th><th>香り</th><th>まとまり</th><th>ツヤ</th><th>継続意向</th><th>推奨意向</th></tr></thead>
+          <tbody id="coat-tbody"><tr><td colspan="10" class="loading">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">👥 お客様A・B・C 一言メッセージ（抜粋）</div></div>
+    <div class="card-body">
+      <div class="comment-list" id="coat-messages"><div class="loading">読み込み中...</div></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 
 <script>
@@ -428,7 +491,7 @@ window.addEventListener('load', function() {
   loadAll();
 });
 
-let allStaff = [], allCustomer = [];
+let allStaff = [], allCustomer = [], allCoat = [];
 let charts = {};
 
 // ===================== NAV =====================
@@ -439,6 +502,7 @@ function showPage(id) {
   event.currentTarget.classList.add('active');
   if (id === 'export') buildReport();
   if (id === 'compare') renderCompare();
+  if (id === 'coat') renderCoat();
 }
 
 
@@ -549,12 +613,14 @@ function renderCompare() {
 
 // ===================== LOAD DATA =====================
 async function loadAll() {
-  const [sr, cr] = await Promise.all([
+  const [sr, cr, coatr] = await Promise.all([
     sb.from('staff_surveys').select('*').order('created_at', { ascending: true }),
-    sb.from('customer_surveys').select('*').order('created_at', { ascending: true })
+    sb.from('customer_surveys').select('*').order('created_at', { ascending: true }),
+    sb.from('coat_staff_surveys').select('*').order('created_at', { ascending: true })
   ]);
   allStaff = sr.data || [];
   allCustomer = cr.data || [];
+  allCoat = coatr.data || [];
   renderOverview();
   renderStaffAnalysis();
   renderCustomerAnalysis();
@@ -814,6 +880,111 @@ function renderBarChart(id, counts, color) {
     options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { stepSize: 1 } } } }
   });
 }
+
+// ===================== COAT ANALYSIS =====================
+function renderCoat() {
+  const data = allCoat;
+
+  // KPI
+  document.getElementById('coat-count').textContent = data.length;
+  const ratingKeys = ['rating_foam','rating_scent','rating_rinse','rating_fingers','rating_gather','rating_shine','rating_frizz','rating_dry','rating_scent_stay'];
+  const allRatings = data.flatMap(r => ratingKeys.map(k => r[k]).filter(Boolean));
+  const avg = allRatings.length ? (allRatings.reduce((a,b)=>a+b,0)/allRatings.length).toFixed(1) : '—';
+  document.getElementById('coat-avg').textContent = avg;
+  const recCount = data.filter(r => r.intent_recommend === 'そう思う').length;
+  document.getElementById('coat-recommend').textContent = data.length ? Math.round(recCount/data.length*100)+'%' : '—';
+  const contCount = data.filter(r => r.intent_continue === 'そう思う').length;
+  document.getElementById('coat-continue').textContent = data.length ? Math.round(contCount/data.length*100)+'%' : '—';
+
+  // 店舗バー
+  const stores = ['品川','蒲田','大井町','池上','川崎','大森'];
+  const maxC = Math.max(...stores.map(s => data.filter(r=>r.store_name===s).length), 1);
+  document.getElementById('coat-store-bars').innerHTML = stores.map(s => {
+    const c = data.filter(r=>r.store_name===s).length;
+    const pct = Math.round(c/maxC*100);
+    return `<div class="store-bar-row"><div class="store-name">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"><span class="bar-text">${c}件</span></div></div><div class="bar-count">${c}</div></div>`;
+  }).join('');
+
+  // 使用感グラフ
+  const washKeys = [['rating_foam','泡立ち'],['rating_scent','香り'],['rating_rinse','すすぎ'],['rating_fingers','指通り']];
+  const finishKeys = [['rating_gather','まとまり'],['rating_shine','ツヤ感'],['rating_frizz','うねり抑制'],['rating_dry','パサつき改善'],['rating_scent_stay','香り持続']];
+  const avgRating = (key) => { const v=data.map(r=>r[key]).filter(Boolean); return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):0; };
+
+  destroyChart('chart-coat-wash');
+  const ctx1 = document.getElementById('chart-coat-wash');
+  if(ctx1) charts['chart-coat-wash'] = new Chart(ctx1.getContext('2d'), {
+    type:'bar', data:{ labels:washKeys.map(k=>k[1]), datasets:[{ data:washKeys.map(k=>parseFloat(avgRating(k[0]))), backgroundColor:'rgba(184,152,106,0.85)', borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{min:0,max:5,ticks:{stepSize:1}}, x:{} }, indexAxis:'y' }
+  });
+
+  destroyChart('chart-coat-finish');
+  const ctx2 = document.getElementById('chart-coat-finish');
+  if(ctx2) charts['chart-coat-finish'] = new Chart(ctx2.getContext('2d'), {
+    type:'bar', data:{ labels:finishKeys.map(k=>k[1]), datasets:[{ data:finishKeys.map(k=>parseFloat(avgRating(k[0]))), backgroundColor:'rgba(100,160,220,0.85)', borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{min:0,max:5,ticks:{stepSize:1}}, x:{} }, indexAxis:'y' }
+  });
+
+  // 接客ポイントグラフ
+  const talkCounts = {};
+  data.forEach(r=>(r.talk_points||[]).forEach(v=>{ talkCounts[v]=(talkCounts[v]||0)+1; }));
+  const topTalk = Object.entries(talkCounts).sort((a,b)=>b[1]-a[1]);
+  destroyChart('chart-coat-talk');
+  const ctx3 = document.getElementById('chart-coat-talk');
+  if(ctx3 && topTalk.length) charts['chart-coat-talk'] = new Chart(ctx3.getContext('2d'), {
+    type:'bar', data:{ labels:topTalk.map(e=>e[0].length>15?e[0].slice(0,15)+'…':e[0]), datasets:[{ data:topTalk.map(e=>e[1]), backgroundColor:'rgba(184,152,106,0.85)', borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{stepSize:1}}} }
+  });
+
+  // 悩みグラフ
+  const concernCounts = {};
+  data.forEach(r=>(r.hair_concerns||[]).forEach(v=>{ concernCounts[v]=(concernCounts[v]||0)+1; }));
+  const topConcerns = Object.entries(concernCounts).sort((a,b)=>b[1]-a[1]);
+  destroyChart('chart-coat-concerns');
+  const ctx4 = document.getElementById('chart-coat-concerns');
+  if(ctx4 && topConcerns.length) charts['chart-coat-concerns'] = new Chart(ctx4.getContext('2d'), {
+    type:'bar', data:{ labels:topConcerns.map(e=>e[0].length>15?e[0].slice(0,15)+'…':e[0]), datasets:[{ data:topConcerns.map(e=>e[1]), backgroundColor:'rgba(100,160,220,0.85)', borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{stepSize:1}}} }
+  });
+
+  // 振り返りグラフ
+  const refCounts = {};
+  data.forEach(r=>(r.reflection||[]).forEach(v=>{ refCounts[v]=(refCounts[v]||0)+1; }));
+  const topRef = Object.entries(refCounts).sort((a,b)=>b[1]-a[1]);
+  destroyChart('chart-coat-reflection');
+  const ctx5 = document.getElementById('chart-coat-reflection');
+  if(ctx5 && topRef.length) charts['chart-coat-reflection'] = new Chart(ctx5.getContext('2d'), {
+    type:'doughnut', data:{ labels:topRef.map(e=>e[0]), values:topRef.map(e=>e[1]),
+    datasets:[{ data:topRef.map(e=>e[1]), backgroundColor:COLORS }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{font:{size:10},boxWidth:12}}} }
+  });
+
+  // テーブル
+  const tbody = document.getElementById('coat-tbody');
+  tbody.innerHTML = data.length ? data.map(r=>`<tr>
+    <td>${r.respondent_date||'—'}</td>
+    <td>${esc(r.staff_name||'—')}</td>
+    <td>${r.store_name||'—'}</td>
+    <td>${r.product_used||'—'}</td>
+    <td>${r.rating_foam||'—'}</td>
+    <td>${r.rating_scent||'—'}</td>
+    <td>${r.rating_gather||'—'}</td>
+    <td>${r.rating_shine||'—'}</td>
+    <td>${r.intent_continue||'—'}</td>
+    <td>${r.intent_recommend||'—'}</td>
+  </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--gray);">データがありません</td></tr>';
+
+  // お客様メッセージ
+  const msgs = [];
+  data.forEach(r => {
+    if(r.cust_a_message) msgs.push({name:r.cust_a_name||'お客様A', msg:r.cust_a_message, staff:r.staff_name, store:r.store_name});
+    if(r.cust_b_message) msgs.push({name:r.cust_b_name||'お客様B', msg:r.cust_b_message, staff:r.staff_name, store:r.store_name});
+    if(r.cust_c_message) msgs.push({name:r.cust_c_name||'お客様C', msg:r.cust_c_message, staff:r.staff_name, store:r.store_name});
+  });
+  const msgEl = document.getElementById('coat-messages');
+  msgEl.innerHTML = msgs.length ? msgs.slice(0,10).map(m=>`<div class="comment-item">${esc(m.msg)}<div class="comment-meta">${esc(m.name)} ← ${esc(m.staff||'—')} / ${m.store||'—'}</div></div>`).join('')
+    : '<div style="color:var(--gray);font-size:12px;padding:8px;">データがありません</div>';
+}
+
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ===================== INIT =====================
