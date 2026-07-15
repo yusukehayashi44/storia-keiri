@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COAT by OVERics アンケート | Hair Beauty STORIA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --gold: #B8986A; --gold-light: #D4B483; --gold-pale: #F5EFE4;
+    --dark: #1A1A1A; --dark2: #2D2D2D; --gray: #666; --gray-light: #F5F5F5;
+    --border: #E0D8CC; --white: #FFFFFF; --success: #4CAF50;
+    --font: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Meiryo',sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--gray-light); color: var(--dark); font-size: 14px; }
+
+  .header { background: linear-gradient(135deg, var(--dark), #2D2D2D); padding: 20px 24px; text-align: center; border-bottom: 2px solid var(--gold); }
+  .header-logo { color: var(--gold); font-size: 11px; letter-spacing: 3px; }
+  .header-title { color: var(--white); font-size: 18px; font-weight: 700; margin-top: 6px; }
+  .header-sub { color: var(--gold-light); font-size: 12px; margin-top: 4px; }
+
+  .form-container { max-width: 680px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  .notice { font-size: 12px; color: var(--gray); padding: 12px; background: var(--white); border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--border); line-height: 1.6; }
+
+  .section-card { background: var(--white); border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden; }
+  .section-head { background: linear-gradient(90deg, var(--dark), #333); padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  .section-num { width: 26px; height: 26px; background: var(--gold); color: var(--dark); border-radius: 50%; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .section-label { color: var(--white); font-size: 14px; font-weight: 700; }
+  .section-body { padding: 16px; }
+
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .meta-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .field-label { font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--dark); }
+  .req { color: #e53935; margin-left: 2px; }
+
+  .text-field { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: var(--font); transition: border-color 0.2s; }
+  .text-field:focus { outline: none; border-color: var(--gold); }
+  input.text-field { height: 38px; }
+  select.text-field { height: 38px; cursor: pointer; }
+  textarea.text-field { resize: vertical; min-height: 60px; }
+
+  .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .check-grid-1 { display: grid; grid-template-columns: 1fr; gap: 7px; }
+  .check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .check-item:hover { border-color: var(--gold); background: rgba(184,152,106,0.05); }
+  .check-item input { accent-color: var(--gold); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+  .check-item label { font-size: 12px; cursor: pointer; line-height: 1.4; }
+
+  /* 5段階評価テーブル */
+  .rating-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .rating-table th, .rating-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; }
+  .rating-table th { background: var(--gray-light); font-weight: 700; font-size: 11px; }
+  .rating-table td:first-child { text-align: left; font-weight: 600; padding-left: 10px; }
+  .rating-table input[type="radio"] { accent-color: var(--gold); width: 16px; height: 16px; }
+  .rating-scale { font-size: 11px; color: var(--gray); margin-bottom: 8px; padding: 5px 8px; background: var(--gray-light); border-radius: 4px; }
+
+  /* 4段階評価 */
+  .intent-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .intent-table th, .intent-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; }
+  .intent-table th { background: var(--gray-light); font-weight: 700; font-size: 11px; }
+  .intent-table td:first-child { text-align: left; font-weight: 600; padding-left: 10px; }
+  .intent-table input[type="radio"] { accent-color: var(--gold); width: 16px; height: 16px; }
+
+  /* 店舗チップ */
+  .store-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .store-chip { padding: 7px 14px; border: 1px solid var(--border); border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.15s; background: var(--white); }
+  .store-chip.selected { background: var(--gold); color: var(--dark); border-color: var(--gold); font-weight: 700; }
+
+  /* お客様カード */
+  .customer-card { background: var(--gold-pale); border-radius: 8px; border: 1px solid var(--border); padding: 14px; margin-bottom: 12px; }
+  .customer-card-head { font-size: 13px; font-weight: 800; color: var(--dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .customer-badge { background: var(--gold); color: var(--dark); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+
+  .submit-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: var(--dark); border: none; border-radius: 10px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: var(--font); letter-spacing: 1px; margin-top: 8px; }
+  .submit-btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--dark); color: var(--white); padding: 14px 24px; border-radius: 8px; border-left: 4px solid var(--gold); font-size: 14px; font-weight: 600; transition: transform 0.4s; z-index: 9999; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left-color: #e53935; }
+
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+  @media (max-width: 480px) {
+    .meta-grid, .meta-grid-3 { grid-template-columns: 1fr; }
+    .check-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Hair Beauty STORIA Group</div>
+  <div class="header-title">COAT by OVERics　スタッフアンケート</div>
+  <div class="header-sub">サンプル使用フィードバック — Staff Survey</div>
+</div>
+
+<div class="form-container">
+  <div class="notice">本アンケートはOVERics（株式会社CATACHI）への製品フィードバック共有、および接客時のトーク作成に活用します。ご自身の使用実感を客観的な選択式でご記入ください。</div>
+
+  <!-- 基本情報 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">基</div><div class="section-label">基本情報</div></div>
+    <div class="section-body">
+      <div class="meta-grid">
+        <div><div class="field-label">記入日<span class="req">*</span></div><input type="date" class="text-field" id="c-date"></div>
+        <div><div class="field-label">記入者名<span class="req">*</span></div><input type="text" class="text-field" id="c-name" placeholder="例：山田 花子"></div>
+      </div>
+      <div class="meta-grid">
+        <div><div class="field-label">経験年数</div>
+          <select class="text-field" id="c-years">
+            <option value="">選択</option>
+            <option>1年未満</option><option>1〜3年</option><option>3〜5年</option><option>5〜10年</option><option>10年以上</option>
+          </select>
+        </div>
+        <div><div class="field-label">使用製品</div>
+          <select class="text-field" id="c-product">
+            <option value="">選択</option>
+            <option>シャンプーのみ</option><option>トリートメントのみ</option><option>シャンプー＋トリートメント</option>
+          </select>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div><div class="field-label">使用期間</div>
+          <select class="text-field" id="c-period">
+            <option value="">選択</option>
+            <option>初回使用</option><option>2〜3回使用</option><option>1週間程度</option><option>2週間以上</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      <div><div class="field-label">所属店舗</div>
+        <div class="store-chips" id="store-chips" style="margin-top:6px;">
+          <div class="store-chip" data-val="品川">品川</div>
+          <div class="store-chip" data-val="蒲田">蒲田</div>
+          <div class="store-chip" data-val="大井町">大井町</div>
+          <div class="store-chip" data-val="池上">池上</div>
+          <div class="store-chip" data-val="川崎">川崎</div>
+          <div class="store-chip" data-val="大森">大森</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 髪質・悩み -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">①</div><div class="section-label">ご自身の髪質・お悩み</div></div>
+    <div class="section-body">
+      <div class="field-label" style="margin-bottom:8px;">髪質</div>
+      <div class="check-grid" id="hair-type">
+        <div class="check-item"><input type="radio" name="hair-type" value="直毛"><label>直毛</label></div>
+        <div class="check-item"><input type="radio" name="hair-type" value="くせ毛(弱)"><label>くせ毛（弱）</label></div>
+        <div class="check-item"><input type="radio" name="hair-type" value="くせ毛(強)"><label>くせ毛（強）</label></div>
+        <div class="check-item"><input type="radio" name="hair-type" value="波状毛"><label>波状毛</label></div>
+        <div class="check-item"><input type="radio" name="hair-type" value="縮毛"><label>縮毛</label></div>
+      </div>
+      <div class="divider"></div>
+      <div class="field-label" style="margin-bottom:8px;">髪の悩み（複数選択可）</div>
+      <div class="check-grid" id="hair-concerns">
+        <div class="check-item"><input type="checkbox" value="うねり・広がりが気になる"><label>うねり・広がりが気になる</label></div>
+        <div class="check-item"><input type="checkbox" value="カラー・トリートメント効果が持続しにくい"><label>カラー・トリートメント効果が持続しにくい</label></div>
+        <div class="check-item"><input type="checkbox" value="カラーの色持ち・色褪せが気になる"><label>カラーの色持ち・色褪せが気になる</label></div>
+        <div class="check-item"><input type="checkbox" value="ドライヤー後・アイロン後のパサつき"><label>ドライヤー後・アイロン後のパサつき</label></div>
+        <div class="check-item"><input type="checkbox" value="毛先・全体的なダメージ"><label>毛先・全体的なダメージ</label></div>
+        <div class="check-item"><input type="checkbox" value="紫外線・乾燥による影響を受けやすい"><label>紫外線・乾燥による影響を受けやすい</label></div>
+        <div class="check-item"><input type="checkbox" value="毎日アイロンやコテを使用する"><label>毎日アイロンやコテを使用する</label></div>
+        <div class="check-item"><input type="checkbox" value="特に気になる悩みはない"><label>特に気になる悩みはない</label></div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="field-label">その他の悩み（自由記入）</div>
+        <textarea class="text-field" id="hair-concerns-other" placeholder=""></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用感 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">②</div><div class="section-label">使用感（5段階評価）</div></div>
+    <div class="section-body">
+      <div class="rating-scale">非常に良い → 良い → 普通 → やや不満 → 不満</div>
+      <table class="rating-table">
+        <thead><tr><th>評価項目</th><th>非常に良い</th><th>良い</th><th>普通</th><th>やや不満</th><th>不満</th></tr></thead>
+        <tbody>
+          <tr><td>泡立ちの良さ</td><td><input type="radio" name="r-foam" value="5"></td><td><input type="radio" name="r-foam" value="4"></td><td><input type="radio" name="r-foam" value="3"></td><td><input type="radio" name="r-foam" value="2"></td><td><input type="radio" name="r-foam" value="1"></td></tr>
+          <tr><td>香りの好み</td><td><input type="radio" name="r-scent" value="5"></td><td><input type="radio" name="r-scent" value="4"></td><td><input type="radio" name="r-scent" value="3"></td><td><input type="radio" name="r-scent" value="2"></td><td><input type="radio" name="r-scent" value="1"></td></tr>
+          <tr><td>すすぎやすさ</td><td><input type="radio" name="r-rinse" value="5"></td><td><input type="radio" name="r-rinse" value="4"></td><td><input type="radio" name="r-rinse" value="3"></td><td><input type="radio" name="r-rinse" value="2"></td><td><input type="radio" name="r-rinse" value="1"></td></tr>
+          <tr><td>洗い上がりの指通り</td><td><input type="radio" name="r-fingers" value="5"></td><td><input type="radio" name="r-fingers" value="4"></td><td><input type="radio" name="r-fingers" value="3"></td><td><input type="radio" name="r-fingers" value="2"></td><td><input type="radio" name="r-fingers" value="1"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 仕上がり実感 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">③</div><div class="section-label">仕上がり実感（5段階評価）</div></div>
+    <div class="section-body">
+      <div class="rating-scale">非常に良い → 良い → 普通 → やや不満 → 不満</div>
+      <table class="rating-table">
+        <thead><tr><th>評価項目</th><th>非常に良い</th><th>良い</th><th>普通</th><th>やや不満</th><th>不満</th></tr></thead>
+        <tbody>
+          <tr><td>まとまり</td><td><input type="radio" name="r-gather" value="5"></td><td><input type="radio" name="r-gather" value="4"></td><td><input type="radio" name="r-gather" value="3"></td><td><input type="radio" name="r-gather" value="2"></td><td><input type="radio" name="r-gather" value="1"></td></tr>
+          <tr><td>ツヤ感</td><td><input type="radio" name="r-shine" value="5"></td><td><input type="radio" name="r-shine" value="4"></td><td><input type="radio" name="r-shine" value="3"></td><td><input type="radio" name="r-shine" value="2"></td><td><input type="radio" name="r-shine" value="1"></td></tr>
+          <tr><td>うねり・広がりの抑制</td><td><input type="radio" name="r-frizz" value="5"></td><td><input type="radio" name="r-frizz" value="4"></td><td><input type="radio" name="r-frizz" value="3"></td><td><input type="radio" name="r-frizz" value="2"></td><td><input type="radio" name="r-frizz" value="1"></td></tr>
+          <tr><td>パサつきの改善</td><td><input type="radio" name="r-dry" value="5"></td><td><input type="radio" name="r-dry" value="4"></td><td><input type="radio" name="r-dry" value="3"></td><td><input type="radio" name="r-dry" value="2"></td><td><input type="radio" name="r-dry" value="1"></td></tr>
+          <tr><td>香りの持続性</td><td><input type="radio" name="r-scent-stay" value="5"></td><td><input type="radio" name="r-scent-stay" value="4"></td><td><input type="radio" name="r-scent-stay" value="3"></td><td><input type="radio" name="r-scent-stay" value="2"></td><td><input type="radio" name="r-scent-stay" value="1"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 継続・推奨意向 -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">④</div><div class="section-label">継続使用・推奨意向</div></div>
+    <div class="section-body">
+      <table class="intent-table">
+        <thead><tr><th>設問</th><th>そう思う</th><th>やや思う</th><th>やや思わない</th><th>思わない</th></tr></thead>
+        <tbody>
+          <tr><td>自分自身で継続して購入・使用したい</td><td><input type="radio" name="i-continue" value="そう思う"></td><td><input type="radio" name="i-continue" value="やや思う"></td><td><input type="radio" name="i-continue" value="やや思わない"></td><td><input type="radio" name="i-continue" value="思わない"></td></tr>
+          <tr><td>お客様に自信を持って勧められる</td><td><input type="radio" name="i-recommend" value="そう思う"></td><td><input type="radio" name="i-recommend" value="やや思う"></td><td><input type="radio" name="i-recommend" value="やや思わない"></td><td><input type="radio" name="i-recommend" value="思わない"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 接客で伝えたいポイント -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑤</div><div class="section-label">接客で伝えたいポイント（複数選択可）</div></div>
+    <div class="section-body">
+      <div class="check-grid" id="talk-points">
+        <div class="check-item"><input type="checkbox" value="毎日のダメージから守る「コーティング」設計"><label>毎日のダメージから守る「コーティング」設計</label></div>
+        <div class="check-item"><input type="checkbox" value="サロン帰りの質感を365日キープできる"><label>サロン帰りの質感を365日キープできる</label></div>
+        <div class="check-item"><input type="checkbox" value="うねり・広がりを抑える形状記憶成分"><label>うねり・広がりを抑える形状記憶成分</label></div>
+        <div class="check-item"><input type="checkbox" value="紫外線・乾燥対策になる"><label>紫外線・乾燥対策になる</label></div>
+        <div class="check-item"><input type="checkbox" value="香り(ジャスミン&ムスク)の満足度が高い"><label>香り（ジャスミン＆ムスク）の満足度が高い</label></div>
+        <div class="check-item"><input type="checkbox" value="アイロン・コテを頻繁に使う方に特に効果的"><label>アイロン・コテを頻繁に使う方に特に効果的</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- お客様A・B・C -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑥</div><div class="section-label">担当のお客様を思い浮かべて（3名）</div></div>
+    <div class="section-body">
+      <p style="font-size:12px;color:var(--gray);margin-bottom:14px;">実際に担当しているお客様やモデルさんを3名思い浮かべてご記入ください。</p>
+
+      <!-- お客様A -->
+      <div class="customer-card">
+        <div class="customer-card-head"><div class="customer-badge">A</div>お客様A</div>
+        <div class="field-label" style="margin-bottom:6px;">氏名</div>
+        <input type="text" class="text-field" id="cust-a-name" placeholder="" style="margin-bottom:12px;">
+        <div class="field-label" style="margin-bottom:8px;">髪の悩み・ご要望（複数選択可）</div>
+        <div class="check-grid" id="cust-a-concerns">
+          <div class="check-item"><input type="checkbox" value="うねり・広がりが気になる"><label>うねり・広がりが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="カラー・トリートメント効果が持続しにくい"><label>カラー・トリートメント効果が持続しにくい</label></div>
+          <div class="check-item"><input type="checkbox" value="カラーの色持ち・色褪せが気になる"><label>カラーの色持ち・色褪せが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="ドライヤー後のパサつきが気になる"><label>ドライヤー後のパサつきが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="毛先・全体的なダメージが気になる"><label>毛先・全体的なダメージが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="紫外線を浴びる時間が長い"><label>紫外線を浴びる時間が長い</label></div>
+          <div class="check-item"><input type="checkbox" value="毎日アイロンやコテを使用する"><label>毎日アイロンやコテを使用する</label></div>
+          <div class="check-item"><input type="checkbox" value="自宅でのケア習慣があまりない"><label>自宅でのケア習慣があまりない</label></div>
+        </div>
+        <div style="margin-top:10px;"><div class="field-label">その他の悩み</div><textarea class="text-field" id="cust-a-concerns-other"></textarea></div>
+        <div class="divider"></div>
+        <div class="field-label" style="margin-bottom:8px;">この商品がこの方に必要だと思う理由（複数選択可）</div>
+        <div class="check-grid" id="cust-a-reasons">
+          <div class="check-item"><input type="checkbox" value="この方の悩みにピンポイントで合う成分だから"><label>この方の悩みにピンポイントで合う成分だから</label></div>
+          <div class="check-item"><input type="checkbox" value="効果や商品の良さを自信を持って説明できるから"><label>効果や商品の良さを自信を持って説明できるから</label></div>
+          <div class="check-item"><input type="checkbox" value="サロンケアの効果を自宅でも持続してほしいから"><label>サロンケアの効果を自宅でも持続してほしいから</label></div>
+          <div class="check-item"><input type="checkbox" value="ライフスタイルに合っていると思うから"><label>ライフスタイルに合っていると思うから</label></div>
+          <div class="check-item"><input type="checkbox" value="今までのケアでは満たせていない部分を補えるから"><label>今までのケアでは満たせていない部分を補えるから</label></div>
+        </div>
+        <div style="margin-top:10px;"><div class="field-label">このお客様へ、一言でお勧めするなら？</div><textarea class="text-field" id="cust-a-message"></textarea></div>
+      </div>
+
+      <!-- お客様B -->
+      <div class="customer-card">
+        <div class="customer-card-head"><div class="customer-badge">B</div>お客様B</div>
+        <div class="field-label" style="margin-bottom:6px;">氏名</div>
+        <input type="text" class="text-field" id="cust-b-name" placeholder="" style="margin-bottom:12px;">
+        <div class="field-label" style="margin-bottom:8px;">髪の悩み・ご要望（複数選択可）</div>
+        <div class="check-grid" id="cust-b-concerns">
+          <div class="check-item"><input type="checkbox" value="うねり・広がりが気になる"><label>うねり・広がりが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="カラー・トリートメント効果が持続しにくい"><label>カラー・トリートメント効果が持続しにくい</label></div>
+          <div class="check-item"><input type="checkbox" value="カラーの色持ち・色褪せが気になる"><label>カラーの色持ち・色褪せが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="ドライヤー後のパサつきが気になる"><label>ドライヤー後のパサつきが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="毛先・全体的なダメージが気になる"><label>毛先・全体的なダメージが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="紫外線を浴びる時間が長い"><label>紫外線を浴びる時間が長い</label></div>
+          <div class="check-item"><input type="checkbox" value="毎日アイロンやコテを使用する"><label>毎日アイロンやコテを使用する</label></div>
+          <div class="check-item"><input type="checkbox" value="自宅でのケア習慣があまりない"><label>自宅でのケア習慣があまりない</label></div>
+        </div>
+        <div style="margin-top:10px;"><div class="field-label">その他の悩み</div><textarea class="text-field" id="cust-b-concerns-other"></textarea></div>
+        <div class="divider"></div>
+        <div class="field-label" style="margin-bottom:8px;">この商品がこの方に必要だと思う理由（複数選択可）</div>
+        <div class="check-grid" id="cust-b-reasons">
+          <div class="check-item"><input type="checkbox" value="この方の悩みにピンポイントで合う成分だから"><label>この方の悩みにピンポイントで合う成分だから</label></div>
+          <div class="check-item"><input type="checkbox" value="効果や商品の良さを自信を持って説明できるから"><label>効果や商品の良さを自信を持って説明できるから</label></div>
+          <div class="check-item"><input type="checkbox" value="サロンケアの効果を自宅でも持続してほしいから"><label>サロンケアの効果を自宅でも持続してほしいから</label></div>
+          <div class="check-item"><input type="checkbox" value="ライフスタイルに合っていると思うから"><label>ライフスタイルに合っていると思うから</label></div>
+          <div class="check-item"><input type="checkbox" value="今までのケアでは満たせていない部分を補えるから"><label>今までのケアでは満たせていない部分を補えるから</label></div>
+        </div>
+        <div style="margin-top:10px;"><div class="field-label">このお客様へ、一言でお勧めするなら？</div><textarea class="text-field" id="cust-b-message"></textarea></div>
+      </div>
+
+      <!-- お客様C -->
+      <div class="customer-card">
+        <div class="customer-card-head"><div class="customer-badge">C</div>お客様C</div>
+        <div class="field-label" style="margin-bottom:6px;">氏名</div>
+        <input type="text" class="text-field" id="cust-c-name" placeholder="" style="margin-bottom:12px;">
+        <div class="field-label" style="margin-bottom:8px;">髪の悩み・ご要望（複数選択可）</div>
+        <div class="check-grid" id="cust-c-concerns">
+          <div class="check-item"><input type="checkbox" value="うねり・広がりが気になる"><label>うねり・広がりが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="カラー・トリートメント効果が持続しにくい"><label>カラー・トリートメント効果が持続しにくい</label></div>
+          <div class="check-item"><input type="checkbox" value="カラーの色持ち・色褪せが気になる"><label>カラーの色持ち・色褪せが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="ドライヤー後のパサつきが気になる"><label>ドライヤー後のパサつきが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="毛先・全体的なダメージが気になる"><label>毛先・全体的なダメージが気になる</label></div>
+          <div class="check-item"><input type="checkbox" value="紫外線を浴びる時間が長い"><label>紫外線を浴びる時間が長い</label></div>
+          <div class="check-item"><input type="checkbox" value="毎日アイロンやコテを使用する"><label>毎日アイロンやコテを使用する</label></div>
+          <div class="check-item"><input type="checkbox" value="自宅でのケア習慣があまりない"><label>自宅でのケア習慣があまりない</label></div>
+        </div>
+        <div style="margin-top:10px;"><div class="field-label">その他の悩み</div><textarea class="text-field" id="cust-c-concerns-other"></textarea></div>
+        <div class="divider"></div>
+        <div class="field-label" style="margin-bottom:8px;">この商品がこの方に必要だと思う理由（複数選択可）</div>
+        <div class="check-grid" id="cust-c-reasons">
+          <div class="check-item"><input type="checkbox" value="この方の悩みにピンポイントで合う成分だから"><label>この方の悩みにピンポイントで合う成分だから</label></div>
+          <div class="check-item"><input type="checkbox" value="効果や商品の良さを自信を持って説明できるから"><label>効果や商品の良さを自信を持って説明できるから</label></div>
+          <div class="check-item"><input type="checkbox" value="サロンケアの効果を自宅でも持続してほしいから"><label>サロンケアの効果を自宅でも持続してほしいから</label></div>
+          <div class="check-item"><input type="checkbox" value="ライフスタイルに合っていると思うから"><label>ライフスタイルに合っていると思うから</label></div>
+          <div class="check-item"><input type="checkbox" value="今までのケアでは満たせていない部分を補えるから"><label>今までのケアでは満たせていない部分を補えるから</label></div>
+        </div>
+        <div style="margin-top:10px;"><div class="field-label">このお客様へ、一言でお勧めするなら？</div><textarea class="text-field" id="cust-c-message"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 振り返り -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑦</div><div class="section-label">振り返り：この提案は自分にとってどんな価値になりそうですか</div></div>
+    <div class="section-body">
+      <div class="check-grid-1" id="reflection">
+        <div class="check-item"><input type="checkbox" value="専属美容師として髪を守ることをお伝えできる"><label>専属美容師として髪を守ることをお伝えできる</label></div>
+        <div class="check-item"><input type="checkbox" value="お客様との信頼関係が深まる"><label>お客様との信頼関係が深まる</label></div>
+        <div class="check-item"><input type="checkbox" value="ホームケアとして新しい付加価値（継続）になる"><label>ホームケアとして新しい付加価値（継続）になる</label></div>
+        <div class="check-item"><input type="checkbox" value="自分自身の提案や接客に自信がつく"><label>自分自身の提案や接客に自信がつく</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- その他コメント -->
+  <div class="section-card">
+    <div class="section-head"><div class="section-num">⑧</div><div class="section-label">その他コメント（任意）</div></div>
+    <div class="section-body">
+      <textarea class="text-field" id="other-comment" placeholder="感じたこと、改善してほしい点、接客時に困った点など自由にご記入ください。" style="min-height:80px;"></textarea>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submit-btn" onclick="submitSurvey()">✅ アンケートを送信する</button>
+  <p style="text-align:center;font-size:11px;color:var(--gray);margin-top:12px;">ご協力ありがとうございました。</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://otilsmzwtkixbvwtdgaq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TbUa5QdgOsDmpweBWy6Peg_QPctpGcH';
+let sb;
+window.addEventListener('load', function() {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+});
+
+// 店舗チップ
+document.querySelectorAll('.store-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.store-chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+  });
+});
+
+function getChecked(containerId) {
+  return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map(i => i.value);
+}
+function getRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+function getStore() {
+  const el = document.querySelector('.store-chip.selected');
+  return el ? el.dataset.val : null;
+}
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+async function submitSurvey() {
+  const name = document.getElementById('c-name').value.trim();
+  const date = document.getElementById('c-date').value;
+  if (!name || !date) { showToast('⚠ 記入日と記入者名は必須です', 'error'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '送信中...';
+
+  const data = {
+    respondent_date: date,
+    staff_name: name,
+    store_name: getStore(),
+    years_experience: document.getElementById('c-years').value || null,
+    product_used: document.getElementById('c-product').value || null,
+    usage_period: document.getElementById('c-period').value || null,
+    hair_type: getRadio('hair-type'),
+    hair_concerns: getChecked('hair-concerns'),
+    hair_concerns_other: document.getElementById('hair-concerns-other').value,
+    rating_foam: parseInt(getRadio('r-foam')) || null,
+    rating_scent: parseInt(getRadio('r-scent')) || null,
+    rating_rinse: parseInt(getRadio('r-rinse')) || null,
+    rating_fingers: parseInt(getRadio('r-fingers')) || null,
+    rating_gather: parseInt(getRadio('r-gather')) || null,
+    rating_shine: parseInt(getRadio('r-shine')) || null,
+    rating_frizz: parseInt(getRadio('r-frizz')) || null,
+    rating_dry: parseInt(getRadio('r-dry')) || null,
+    rating_scent_stay: parseInt(getRadio('r-scent-stay')) || null,
+    intent_continue: getRadio('i-continue'),
+    intent_recommend: getRadio('i-recommend'),
+    talk_points: getChecked('talk-points'),
+    cust_a_name: document.getElementById('cust-a-name').value,
+    cust_a_concerns: getChecked('cust-a-concerns'),
+    cust_a_concerns_other: document.getElementById('cust-a-concerns-other').value,
+    cust_a_reasons: getChecked('cust-a-reasons'),
+    cust_a_message: document.getElementById('cust-a-message').value,
+    cust_b_name: document.getElementById('cust-b-name').value,
+    cust_b_concerns: getChecked('cust-b-concerns'),
+    cust_b_concerns_other: document.getElementById('cust-b-concerns-other').value,
+    cust_b_reasons: getChecked('cust-b-reasons'),
+    cust_b_message: document.getElementById('cust-b-message').value,
+    cust_c_name: document.getElementById('cust-c-name').value,
+    cust_c_concerns: getChecked('cust-c-concerns'),
+    cust_c_concerns_other: document.getElementById('cust-c-concerns-other').value,
+    cust_c_reasons: getChecked('cust-c-reasons'),
+    cust_c_message: document.getElementById('cust-c-message').value,
+    reflection: getChecked('reflection'),
+    other_comment: document.getElementById('other-comment').value,
+  };
+
+  const { error } = await sb.from('coat_staff_surveys').insert([data]);
+  btn.disabled = false; btn.textContent = '✅ アンケートを送信する';
+  if (error) { showToast('❌ 送信失敗：' + error.message, 'error'); }
+  else { showToast('✅ 送信しました！ご協力ありがとうございます', 'success'); }
+}
+
+// 今日の日付をデフォルトセット
+document.getElementById('c-date').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
