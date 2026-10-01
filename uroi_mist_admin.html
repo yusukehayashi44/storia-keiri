@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>うるおいミスト 管理ダッシュボード | STORIA</title>
+<script>
+(function() {
+  const PASS = 'snc@1023';
+  const KEY  = 'storia_admin_auth';
+  if (sessionStorage.getItem(KEY) !== PASS) {
+    const input = prompt('パスワードを入力してください');
+    if (input !== PASS) {
+      document.write('<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:1.1rem;color:#c0392b;">アクセスできません。ページを閉じてください。</div>');
+      document.close();
+      throw new Error('unauthorized');
+    }
+    sessionStorage.setItem(KEY, PASS);
+  }
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
