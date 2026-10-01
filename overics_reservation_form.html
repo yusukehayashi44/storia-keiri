@@ -305,17 +305,21 @@
       </div>
 
       <div class="form-group">
-        <label>電話番号（任意）</label>
+        <label>電話番号<span class="req">*</span></label>
         <input type="tel" id="customer_phone" placeholder="090-0000-0000" autocomplete="tel">
+        <div class="error-msg" id="err-phone">電話番号を入力してください</div>
       </div>
 
       <div class="form-group">
         <label>ご来店店舗<span class="req">*</span></label>
         <select id="store_name">
           <option value="">-- 店舗を選択 --</option>
-          <option>STORIA 本店</option>
-          <option>STORIA 別館</option>
-          <option>STORIA 駅前店</option>
+          <option>STORIA品川店</option>
+          <option>STORIA蒲田店</option>
+          <option>La storia大井町店</option>
+          <option>STORIA川崎店</option>
+          <option>STORIA池上店</option>
+          <option>STORIA大森店</option>
         </select>
         <div class="error-msg" id="err-store">店舗を選択してください</div>
       </div>
@@ -496,11 +500,13 @@ async function submitReservation() {
   // バリデーション
   let valid = true;
   const name    = document.getElementById('customer_name').value.trim();
+  const phone   = document.getElementById('customer_phone').value.trim();
   const store   = document.getElementById('store_name').value;
   const prodSel = document.getElementById('product_select');
   const agree   = document.getElementById('policy_agree').checked;
 
   showError('err-name',    !name);    if (!name)    valid = false;
+  showError('err-phone',   !phone);   if (!phone)   valid = false;
   showError('err-store',   !store);   if (!store)   valid = false;
   showError('err-product', !prodSel.value); if (!prodSel.value) valid = false;
   showError('err-policy',  !agree);   if (!agree)   valid = false;
